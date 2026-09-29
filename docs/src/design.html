@@ -1,0 +1,541 @@
+<title>NFC備品管理システム 設計書</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F4F7F8; --sf:#FFFFFF; --ink:#15212B; --mu:#5C6B75; --ln:#D5DEE3; --ac:#00818A; --acs:#E0F1F2; --led:#3D7BFF;
+  --ok:#15803D; --oks:#E3F4E8; --ng:#B42318; --ngs:#FBE9E7; --wn:#A15C07; --wns:#FBF0DC;
+  --display:"IBM Plex Sans JP","Hiragino Sans","Noto Sans JP",sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#0E1519; --sf:#152026; --ink:#E2EAEE; --mu:#8FA0AA; --ln:#2A3942; --ac:#3CBFC7; --acs:#16353A; --led:#7AA2FF;
+  --ok:#4ADE80; --oks:#16301F; --ng:#F87171; --ngs:#3A1C1C; --wn:#F4B860; --wns:#3A2C14;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0E1519; --sf:#152026; --ink:#E2EAEE; --mu:#8FA0AA; --ln:#2A3942; --ac:#3CBFC7; --acs:#16353A; --led:#7AA2FF;
+  --ok:#4ADE80; --oks:#16301F; --ng:#F87171; --ngs:#3A1C1C; --wn:#F4B860; --wns:#3A2C14;
+}
+
+.d-bg{fill:var(--bg)}
+.d-zone{fill:none;stroke:var(--ln);stroke-width:1.2;stroke-dasharray:5 4}
+.d-box{fill:var(--sf);stroke:var(--ln);stroke-width:1.2}
+.d-box2{fill:var(--acs);stroke:var(--ac);stroke-width:1.2}
+.d-t{fill:var(--ink);font-family:'IBM Plex Sans JP','Noto Sans JP','Hiragino Sans',sans-serif;font-size:13px}
+.d-h{fill:var(--ink);font-family:'IBM Plex Sans JP','Noto Sans JP','Hiragino Sans',sans-serif;font-size:14px;font-weight:600}
+.d-z{fill:var(--mu);font-family:'IBM Plex Sans JP','Noto Sans JP','Hiragino Sans',sans-serif;font-size:12px;font-weight:600;letter-spacing:.06em}
+.d-s{fill:var(--mu);font-family:'IBM Plex Sans JP','Noto Sans JP','Hiragino Sans',sans-serif;font-size:11.5px}
+.d-m{fill:var(--mu);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px}
+.d-a{fill:var(--ac);font-family:'IBM Plex Sans JP','Noto Sans JP','Hiragino Sans',sans-serif;font-size:11.5px;font-weight:600}
+.d-ar{stroke:var(--ac);stroke-width:1.6;fill:none}
+.d-arm{stroke:var(--mu);stroke-width:1.3;fill:none;stroke-dasharray:4 3}
+.d-head{fill:var(--ac)}
+.d-headm{fill:var(--mu)}
+.d-tag{fill:var(--sf);stroke:var(--ac);stroke-width:2}
+.d-led-on{fill:var(--led)}
+.d-led-off{fill:var(--ln)}
+.d-led-lit{fill:#6FA0FF}.d-led-dark{fill:#1A2740}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.75;padding:0 20px}
+.wrap{max-width:1040px;margin:0 auto;padding-block:40px 80px;display:grid;grid-template-columns:200px minmax(0,1fr);gap:48px}
+nav{position:sticky;top:calc(env(safe-area-inset-top,0px) + 24px);align-self:start;font-size:13px}
+nav ol{list-style:none;margin:0;padding:0;display:grid;gap:2px;counter-reset:n}
+nav a{display:flex;gap:10px;color:var(--mu);text-decoration:none;padding:4px 8px;border-radius:6px}
+nav a span{font-family:var(--mono);font-size:11.5px;color:var(--ac);min-width:1.4em;padding-top:1px}
+nav a:hover,nav a:focus-visible{color:var(--ink);background:var(--sf);outline:none}
+main{min-width:0;display:grid;gap:56px}
+header{display:grid;gap:14px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--ac);text-transform:uppercase}
+h1{font-family:var(--display);font-weight:700;font-size:34px;line-height:1.3;margin:0;text-wrap:balance}
+.lead{font-size:16px;max-width:40em;margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 24px;font-size:13px;color:var(--mu)}
+.meta b{color:var(--ink);font-weight:500}
+section{display:grid;gap:16px;scroll-margin-top:24px}
+h2{font-family:var(--display);font-weight:600;font-size:22px;margin:0;display:flex;align-items:baseline;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--ln);text-wrap:balance}
+h2 .no{font-family:var(--mono);font-size:14px;color:var(--ac);font-weight:500}
+h3{font-family:var(--display);font-weight:600;font-size:16px;margin:8px 0 0}
+p{margin:0;max-width:42em}
+ul,ol.steps{margin:0;padding-left:1.3em;display:grid;gap:6px;max-width:44em}
+code{font-family:var(--mono);font-size:.86em;background:var(--acs);color:var(--ink);padding:1px 5px;border-radius:4px;white-space:nowrap}
+.tbl{overflow-x:auto;border:1px solid var(--ln);border-radius:10px;background:var(--sf)}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;vertical-align:top;padding:9px 14px;border-bottom:1px solid var(--ln)}
+tr:last-child td{border-bottom:0}
+th{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.04em;color:var(--mu);background:var(--bg)}
+td:first-child{white-space:nowrap}
+.fig{background:var(--sf);border:1px solid var(--ln);border-radius:12px;padding:12px;overflow-x:auto}
+.fig.dark{background:var(--bg)}
+figcaption{font-size:12.5px;color:var(--mu);padding:8px 4px 0}
+pre.mmd{background:var(--sf);border:1px solid var(--ln);border-radius:12px;padding:16px;margin:0;overflow-x:auto;font-family:var(--mono);font-size:12.5px;white-space:pre}
+.mmd-out{background:var(--sf);border:1px solid var(--ln);border-radius:12px;padding:16px;overflow-x:auto}
+.mmd-out{line-height:1.5}
+.mmd-out .edgeLabel rect.background{fill:var(--sf)!important;opacity:1!important}
+.mmd-out svg{display:block;margin:0 auto;height:auto}
+.tbl code{white-space:normal;overflow-wrap:anywhere}
+pre.code{font-family:var(--mono);font-size:13px;line-height:1.6;background:var(--sf);border:1px solid var(--ln);border-radius:10px;padding:14px 16px;margin:0;overflow-x:auto}
+.pill{display:inline-block;font-family:var(--display);font-size:11.5px;font-weight:600;line-height:1;padding:4px 8px;border-radius:999px;white-space:nowrap}
+.p-ok{background:var(--oks);color:var(--ok)}
+.p-ng{background:var(--ngs);color:var(--ng)}
+.p-wn{background:var(--wns);color:var(--wn)}
+.p-ac{background:var(--acs);color:var(--ac)}
+.p-mu{background:var(--bg);color:var(--mu);border:1px solid var(--ln)}
+.callout{border:1px solid var(--wn);background:var(--wns);border-radius:10px;padding:12px 16px;font-size:14px;display:grid;gap:4px}
+.callout b{color:var(--wn);font-family:var(--display)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.layer{border:1px solid var(--ln);background:var(--sf);border-radius:12px;padding:16px 18px;display:grid;gap:6px;align-content:start}
+.layer.mg{background:var(--acs);border-color:var(--ac)}
+.layer h3{margin:0}
+.layer .where{font-size:12.5px;color:var(--mu)}
+.rgb{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:0}
+@media (max-width:860px){
+  .wrap{grid-template-columns:1fr;gap:28px;padding-block:28px 60px}
+  nav{position:static}
+  nav ol{display:flex;flex-wrap:wrap;gap:4px}
+  nav a{background:var(--sf);border:1px solid var(--ln)}
+  h1{font-size:27px}
+  td:first-child{white-space:normal}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+html{scroll-behavior:smooth}
+</style>
+
+<div class="wrap">
+<nav aria-label="目次">
+  <ol>
+    <li><a href="#s1"><span>1</span>概要</a></li>
+    <li><a href="#s2"><span>2</span>前提と確認事項</a></li>
+    <li><a href="#s3"><span>3</span>システム構成</a></li>
+    <li><a href="#s4"><span>4</span>コンポーネント</a></li>
+    <li><a href="#s5"><span>5</span>タッチ操作の流れ</a></li>
+    <li><a href="#s6"><span>6</span>業務ルール</a></li>
+    <li><a href="#s7"><span>7</span>LED 表示仕様</a></li>
+    <li><a href="#s8"><span>8</span>データモデル</a></li>
+    <li><a href="#s9"><span>9</span>API</a></li>
+    <li><a href="#s10"><span>10</span>Web 画面</a></li>
+    <li><a href="#s11"><span>11</span>移行方針</a></li>
+    <li><a href="#s12"><span>12</span>リスクと PoC</a></li>
+  </ol>
+</nav>
+
+<main>
+<header>
+  <div class="eyebrow">Design Doc v0.4 · Arduino UNO Q × RC-S380</div>
+  <h1>NFC備品管理システム 設計書</h1>
+  <p class="lead">ユーザーと備品に NFC タグを貼り、<b>「ユーザー → 備品」の順にタッチ</b>するだけで貸出と返却を記録します。結果は LED Matrix に表示し、備品・ユーザー・貸出状況は Web 画面で管理します。</p>
+  <div class="meta">
+    <span>作成日 <b>2026-09-26</b></span>
+    <span>段階 <b>基本設計</b></span>
+    <span>タグ <b>NTAG215（φ25mm・504バイト）</b></span>
+  </div>
+</header>
+
+<section id="s1">
+  <h2><span class="no">01</span>概要</h2>
+  <figure class="fig" style="margin:0"><svg viewBox="0 0 1000 660" role="img" aria-label="システム構成イメージ" style="width:100%;height:auto;min-width:720px"><defs>
+<marker id="ah-f9ab39c1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="d-head" d="M0,0L10,5L0,10z"/></marker>
+<marker id="am-f9ab39c1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="d-headm" d="M0,0L10,5L0,10z"/></marker>
+</defs><rect class="d-bg" x="0" y="0" width="1000" height="660"/><text class="d-z" x="20" y="26" text-anchor="start">PHASE 1　UNO Q 1台で全機能を動かす</text><rect class="d-zone" x="20" y="40" width="250" height="390" rx="12"/><text class="d-z" x="34" y="62">設置場所（貸出カウンター）</text><rect class="d-box" x="40" y="78" width="110" height="58" rx="8"/><text class="d-h" x="52" y="100">ユーザー</text><text class="d-t" x="54" y="122">社員証に貼付</text><circle class="d-tag" cx="128" cy="95" r="11"/><text class="d-a" x="128" y="99" text-anchor="middle" style="font-size:8px">NFC</text><rect class="d-box" x="40" y="176" width="110" height="58" rx="8"/><text class="d-h" x="52" y="198">備品</text><text class="d-t" x="54" y="220">PC・工具など</text><circle class="d-tag" cx="128" cy="193" r="11"/><text class="d-a" x="128" y="197" text-anchor="middle" style="font-size:8px">NFC</text><rect class="d-box2" x="178" y="120" width="76" height="72" rx="8"/><text class="d-h" x="190" y="142">RC-S380</text><text class="d-s" x="216" y="172" text-anchor="middle">NFCリーダー</text><path class="d-ar" d="M150,112 L176,140" marker-end="url(#ah-f9ab39c1)"/><path class="d-ar" d="M150,200 L176,176" marker-end="url(#ah-f9ab39c1)"/><text class="d-a" x="158" y="108" text-anchor="start">①</text><text class="d-a" x="158" y="222" text-anchor="start">②</text><rect class="d-box" x="166" y="268" width="94" height="66" rx="8"/><text class="d-h" x="178" y="290">USB-C ハブ</text><text class="d-t" x="180" y="312">給電(PD)付き</text><path class="d-arm" d="M216,192 L216,266" marker-end="url(#am-f9ab39c1)"/><text class="d-s" x="222" y="236" text-anchor="start">USB</text><rect class="d-box" x="40" y="268" width="110" height="66" rx="8"/><text class="d-h" x="52" y="290">NTAG215</text><text class="d-t" x="54" y="312">UIDだけを使用</text><text class="d-t" x="40" y="368" text-anchor="start">① ユーザー → ② 備品 の順にタッチ</text><text class="d-s" x="40" y="390" text-anchor="start">同じ操作で貸出・返却・切替を判定</text><text class="d-s" x="40" y="410" text-anchor="start">（判定は管理機能が行う）</text><rect class="d-zone" x="300" y="40" width="450" height="390" rx="12"/><text class="d-z" x="314" y="62">ARDUINO UNO Q</text><text class="d-s" x="318" y="84" text-anchor="start">MPU（Linux）</text><rect class="d-box" x="318" y="94" width="190" height="150" rx="8"/><text class="d-h" x="330" y="116">Edge（App コンテナ）</text><text class="d-m" x="332" y="138">touch_fsm</text><text class="d-m" x="332" y="157">mgmt_client</text><text class="d-m" x="332" y="176">display</text><text class="d-s" x="332" y="204" text-anchor="start">2段階タッチの状態管理</text><text class="d-s" x="332" y="221" text-anchor="start">管理機能の呼出し・LED指示</text><rect class="d-box2" x="318" y="262" width="136" height="48" rx="8"/><text class="d-h" x="330" y="284">nfc-agent</text><text class="d-s" x="332" y="300" text-anchor="start">別コンテナ・USB読取</text><path class="d-ar" d="M373,260 L373,246" marker-end="url(#ah-f9ab39c1)"/><text class="d-a" x="380" y="256" text-anchor="start">UID（HTTP）</text><rect class="d-box2" x="540" y="94" width="192" height="212" rx="8"/><text class="d-h" x="552" y="116">Management（管理機能）</text><text class="d-t" x="554" y="138">REST API / WebSocket</text><text class="d-t" x="554" y="157">業務ルール（貸出判定）</text><text class="d-t" x="554" y="176">DB（SQLite）</text><text class="d-t" x="554" y="195">Web UI（静的ファイル）</text><text class="d-s" x="554" y="214" text-anchor="start">FastAPI 単体アプリ</text><text class="d-a" x="554" y="231" text-anchor="start">→ Phase 2 でそのまま移設</text><path class="d-ar" d="M508,160 L538,160" marker-end="url(#ah-f9ab39c1)"/><text class="d-a" x="524" y="150" text-anchor="middle">HTTP</text><rect class="d-box" x="318" y="322" width="414" height="94" rx="8"/><text class="d-h" x="332" y="344" text-anchor="start">MCU（STM32 / sketch.ino）</text><text class="d-m" x="332" y="366" text-anchor="start">Bridge.provide("show", …)</text><text class="d-s" x="332" y="386" text-anchor="start">LED Matrix 8×13 + RGB LED</text><circle class="d-led-on" cx="604.5" cy="336.5" r="3.1"/><circle class="d-led-off" cx="613.5" cy="336.5" r="2.2319999999999998"/><circle class="d-led-off" cx="622.5" cy="336.5" r="2.2319999999999998"/><circle class="d-led-off" cx="631.5" cy="336.5" r="2.2319999999999998"/><circle class="d-led-off" cx="640.5" cy="336.5" r="2.2319999999999998"/><circle class="d-led-off" cx="649.5" cy="336.5" r="2.2319999999999998"/><circle class="d-led-off" cx="658.5" cy="336.5" r="2.2319999999999998"/><circle class="d-led-off" cx="667.5" cy="336.5" r="2.2319999999999998"/><circle class="d-led-off" cx="676.5" cy="336.5" r="2.2319999999999998"/><circle class="d-led-off" cx="685.5" cy="336.5" r="2.2319999999999998"/><circle class="d-led-off" cx="694.5" cy="336.5" r="2.2319999999999998"/><circle class="d-led-off" cx="703.5" cy="336.5" r="2.2319999999999998"/><circle class="d-led-off" cx="712.5" cy="336.5" r="2.2319999999999998"/><circle class="d-led-on" cx="604.5" cy="345.5" r="3.1"/><circle class="d-led-off" cx="613.5" cy="345.5" r="2.2319999999999998"/><circle class="d-led-off" cx="622.5" cy="345.5" r="2.2319999999999998"/><circle class="d-led-off" cx="631.5" cy="345.5" r="2.2319999999999998"/><circle class="d-led-off" cx="640.5" cy="345.5" r="2.2319999999999998"/><circle class="d-led-off" cx="649.5" cy="345.5" r="2.2319999999999998"/><circle class="d-led-off" cx="658.5" cy="345.5" r="2.2319999999999998"/><circle class="d-led-off" cx="667.5" cy="345.5" r="2.2319999999999998"/><circle class="d-led-on" cx="676.5" cy="345.5" r="3.1"/><circle class="d-led-off" cx="685.5" cy="345.5" r="2.2319999999999998"/><circle class="d-led-off" cx="694.5" cy="345.5" r="2.2319999999999998"/><circle class="d-led-off" cx="703.5" cy="345.5" r="2.2319999999999998"/><circle class="d-led-off" cx="712.5" cy="345.5" r="2.2319999999999998"/><circle class="d-led-on" cx="604.5" cy="354.5" r="3.1"/><circle class="d-led-off" cx="613.5" cy="354.5" r="2.2319999999999998"/><circle class="d-led-off" cx="622.5" cy="354.5" r="2.2319999999999998"/><circle class="d-led-off" cx="631.5" cy="354.5" r="2.2319999999999998"/><circle class="d-led-off" cx="640.5" cy="354.5" r="2.2319999999999998"/><circle class="d-led-off" cx="649.5" cy="354.5" r="2.2319999999999998"/><circle class="d-led-off" cx="658.5" cy="354.5" r="2.2319999999999998"/><circle class="d-led-off" cx="667.5" cy="354.5" r="2.2319999999999998"/><circle class="d-led-on" cx="676.5" cy="354.5" r="3.1"/><circle class="d-led-on" cx="685.5" cy="354.5" r="3.1"/><circle class="d-led-off" cx="694.5" cy="354.5" r="2.2319999999999998"/><circle class="d-led-off" cx="703.5" cy="354.5" r="2.2319999999999998"/><circle class="d-led-off" cx="712.5" cy="354.5" r="2.2319999999999998"/><circle class="d-led-on" cx="604.5" cy="363.5" r="3.1"/><circle class="d-led-off" cx="613.5" cy="363.5" r="2.2319999999999998"/><circle class="d-led-on" cx="622.5" cy="363.5" r="3.1"/><circle class="d-led-on" cx="631.5" cy="363.5" r="3.1"/><circle class="d-led-on" cx="640.5" cy="363.5" r="3.1"/><circle class="d-led-on" cx="649.5" cy="363.5" r="3.1"/><circle class="d-led-on" cx="658.5" cy="363.5" r="3.1"/><circle class="d-led-on" cx="667.5" cy="363.5" r="3.1"/><circle class="d-led-on" cx="676.5" cy="363.5" r="3.1"/><circle class="d-led-on" cx="685.5" cy="363.5" r="3.1"/><circle class="d-led-on" cx="694.5" cy="363.5" r="3.1"/><circle class="d-led-off" cx="703.5" cy="363.5" r="2.2319999999999998"/><circle class="d-led-off" cx="712.5" cy="363.5" r="2.2319999999999998"/><circle class="d-led-on" cx="604.5" cy="372.5" r="3.1"/><circle class="d-led-off" cx="613.5" cy="372.5" r="2.2319999999999998"/><circle class="d-led-on" cx="622.5" cy="372.5" r="3.1"/><circle class="d-led-on" cx="631.5" cy="372.5" r="3.1"/><circle class="d-led-on" cx="640.5" cy="372.5" r="3.1"/><circle class="d-led-on" cx="649.5" cy="372.5" r="3.1"/><circle class="d-led-on" cx="658.5" cy="372.5" r="3.1"/><circle class="d-led-on" cx="667.5" cy="372.5" r="3.1"/><circle class="d-led-on" cx="676.5" cy="372.5" r="3.1"/><circle class="d-led-on" cx="685.5" cy="372.5" r="3.1"/><circle class="d-led-on" cx="694.5" cy="372.5" r="3.1"/><circle class="d-led-off" cx="703.5" cy="372.5" r="2.2319999999999998"/><circle class="d-led-off" cx="712.5" cy="372.5" r="2.2319999999999998"/><circle class="d-led-on" cx="604.5" cy="381.5" r="3.1"/><circle class="d-led-off" cx="613.5" cy="381.5" r="2.2319999999999998"/><circle class="d-led-off" cx="622.5" cy="381.5" r="2.2319999999999998"/><circle class="d-led-off" cx="631.5" cy="381.5" r="2.2319999999999998"/><circle class="d-led-off" cx="640.5" cy="381.5" r="2.2319999999999998"/><circle class="d-led-off" cx="649.5" cy="381.5" r="2.2319999999999998"/><circle class="d-led-off" cx="658.5" cy="381.5" r="2.2319999999999998"/><circle class="d-led-off" cx="667.5" cy="381.5" r="2.2319999999999998"/><circle class="d-led-on" cx="676.5" cy="381.5" r="3.1"/><circle class="d-led-on" cx="685.5" cy="381.5" r="3.1"/><circle class="d-led-off" cx="694.5" cy="381.5" r="2.2319999999999998"/><circle class="d-led-off" cx="703.5" cy="381.5" r="2.2319999999999998"/><circle class="d-led-off" cx="712.5" cy="381.5" r="2.2319999999999998"/><circle class="d-led-on" cx="604.5" cy="390.5" r="3.1"/><circle class="d-led-off" cx="613.5" cy="390.5" r="2.2319999999999998"/><circle class="d-led-off" cx="622.5" cy="390.5" r="2.2319999999999998"/><circle class="d-led-off" cx="631.5" cy="390.5" r="2.2319999999999998"/><circle class="d-led-off" cx="640.5" cy="390.5" r="2.2319999999999998"/><circle class="d-led-off" cx="649.5" cy="390.5" r="2.2319999999999998"/><circle class="d-led-off" cx="658.5" cy="390.5" r="2.2319999999999998"/><circle class="d-led-off" cx="667.5" cy="390.5" r="2.2319999999999998"/><circle class="d-led-on" cx="676.5" cy="390.5" r="3.1"/><circle class="d-led-off" cx="685.5" cy="390.5" r="2.2319999999999998"/><circle class="d-led-off" cx="694.5" cy="390.5" r="2.2319999999999998"/><circle class="d-led-off" cx="703.5" cy="390.5" r="2.2319999999999998"/><circle class="d-led-off" cx="712.5" cy="390.5" r="2.2319999999999998"/><circle class="d-led-on" cx="604.5" cy="399.5" r="3.1"/><circle class="d-led-off" cx="613.5" cy="399.5" r="2.2319999999999998"/><circle class="d-led-off" cx="622.5" cy="399.5" r="2.2319999999999998"/><circle class="d-led-off" cx="631.5" cy="399.5" r="2.2319999999999998"/><circle class="d-led-off" cx="640.5" cy="399.5" r="2.2319999999999998"/><circle class="d-led-off" cx="649.5" cy="399.5" r="2.2319999999999998"/><circle class="d-led-off" cx="658.5" cy="399.5" r="2.2319999999999998"/><circle class="d-led-off" cx="667.5" cy="399.5" r="2.2319999999999998"/><circle class="d-led-off" cx="676.5" cy="399.5" r="2.2319999999999998"/><circle class="d-led-off" cx="685.5" cy="399.5" r="2.2319999999999998"/><circle class="d-led-off" cx="694.5" cy="399.5" r="2.2319999999999998"/><circle class="d-led-off" cx="703.5" cy="399.5" r="2.2319999999999998"/><circle class="d-led-off" cx="712.5" cy="399.5" r="2.2319999999999998"/><path class="d-ar" d="M470,244 L470,320" marker-end="url(#ah-f9ab39c1)"/><text class="d-a" x="478" y="316" text-anchor="start">Bridge（RPC）</text><path class="d-arm" d="M260,300 L316,290" marker-end="url(#am-f9ab39c1)"/><rect class="d-zone" x="780" y="40" width="200" height="390" rx="12"/><text class="d-z" x="794" y="62">利用者・管理者の端末</text><rect class="d-box" x="796" y="80" width="168" height="132" rx="8"/><text class="d-h" x="808" y="102">Web 管理画面</text><text class="d-t" x="810" y="124">ダッシュボード</text><text class="d-t" x="810" y="143">備品・ユーザー</text><text class="d-t" x="810" y="162">貸出履歴</text><text class="d-t" x="810" y="181">未登録タグ</text><path class="d-ar" d="M734,140 L794,140" marker-end="url(#ah-f9ab39c1)" marker-start="url(#ah-f9ab39c1)"/><text class="d-a" x="764" y="128" text-anchor="middle">LAN</text><rect class="d-box" x="796" y="236" width="168" height="96" rx="8"/><text class="d-h" x="808" y="258">アクセス権</text><text class="d-t" x="810" y="280">閲覧：誰でも</text><text class="d-t" x="810" y="299">編集：管理者ログイン</text><text class="d-s" x="796" y="366" text-anchor="start">PC・スマホのブラウザ</text><text class="d-m" x="796" y="386" text-anchor="start">http://&lt;UNO Q&gt;:8000</text><text class="d-z" x="20" y="470" text-anchor="start">PHASE 2　管理機能を別PCへ移す</text><rect class="d-zone" x="20" y="484" width="960" height="160" rx="12"/><text class="d-z" x="34" y="506">接続先 MGMT_URL を変えるだけで移行</text><rect class="d-box" x="56" y="508" width="250" height="96" rx="8"/><rect class="d-box" x="50" y="514" width="250" height="96" rx="8"/><rect class="d-box" x="44" y="520" width="250" height="96" rx="8"/><text class="d-h" x="58" y="542" text-anchor="start">UNO Q（端末・複数台可）</text><text class="d-t" x="58" y="566" text-anchor="start">nfc-agent + Edge + LED</text><text class="d-m" x="58" y="586" text-anchor="start">MGMT_URL=http://mgmt-pc:8000</text><path class="d-ar" d="M298,568 L428,568" marker-end="url(#ah-f9ab39c1)"/><text class="d-a" x="363" y="558" text-anchor="middle">HTTP + 端末トークン</text><rect class="d-box2" x="430" y="520" width="290" height="96" rx="8"/><text class="d-h" x="442" y="542">管理PC（Docker）</text><text class="d-t" x="444" y="564">Management：Phase 1 と同じコード</text><text class="d-t" x="444" y="583">DB：SQLite → PostgreSQL（任意）</text><path class="d-ar" d="M722,568 L794,568" marker-end="url(#ah-f9ab39c1)" marker-start="url(#ah-f9ab39c1)"/><rect class="d-box" x="796" y="530" width="168" height="76" rx="8"/><text class="d-h" x="808" y="552">Web 管理画面</text><text class="d-t" x="810" y="574">URL が管理PCに変わる</text></svg><figcaption>システム構成イメージ。上段が Phase 1（UNO Q 1台）、下段が Phase 2（管理機能を別PCへ移設）</figcaption></figure>
+  <div class="tbl"><table>
+    <thead><tr><th>対象</th><th>対象外（将来検討）</th></tr></thead>
+    <tbody>
+      <tr><td>タッチによる貸出・返却・貸出者の切替</td><td>貸出期限・延滞通知（メール/チャット）</td></tr>
+      <tr><td>LED Matrix・RGB LED での結果表示</td><td>予約機能</td></tr>
+      <tr><td>Web での備品・ユーザー・履歴・未登録タグの管理</td><td>端末がオフラインの間の貸出の記録</td></tr>
+      <tr><td>管理機能を別PCへ移せる構成</td><td>外部の認証基盤（SSO など）との連携</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s2">
+  <h2><span class="no">02</span>前提と確認事項</h2>
+  <h3>決定事項</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>論点</th><th>決定</th></tr></thead>
+    <tbody>
+      <tr><td>タグの識別</td><td>NTAG215 の <b>UID（7バイト）だけ</b>を使う。タグには書き込まない</td></tr>
+      <tr><td>他人が貸出中の備品をタッチ</td><td><b>貸出者を切り替える</b>（前の人は返却扱い、新しい人に貸出）</td></tr>
+      <tr><td>Web 画面の権限</td><td>閲覧は誰でもできる。<b>登録・編集は管理者ログインが必要</b></td></tr>
+      <tr><td>構成</td><td>Phase 1 は UNO Q 1台に全機能。Phase 2 で管理機能を別PCへ移す</td></tr>
+      <tr><td>NFCの読取</td><td>App とは<b>別のコンテナ（nfc-agent）</b>で動かす。App コンテナからは USB を開けないため（§12 PoC #2）</td></tr>
+    </tbody>
+  </table></div>
+  <h3>必要な機材</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>機材</th><th>備考</th></tr></thead>
+    <tbody>
+      <tr><td>Arduino UNO Q</td><td>確認済み（RAM 3.6GB、空きストレージ 14GB）</td></tr>
+      <tr><td>Sony RC-S380（/S または /P）</td><td>USB ID <code>054c:06c3</code> または <code>054c:06c1</code></td></tr>
+      <tr><td>給電(PD)付き USB-C ハブ <span class="pill p-wn">追加購入</span></td><td>UNO Q の USB-C は1ポートだけなので、ハブで電源とリーダーを同時につなぐ</td></tr>
+      <tr><td>NTAG215 タグ（10枚）</td><td>ユーザーと備品の合計が10を超えるなら追加で購入</td></tr>
+    </tbody>
+  </table></div>
+  <h3>仮定（違う場合は教えてください）</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>項目</th><th>仮定した値</th></tr></thead>
+    <tbody>
+      <tr><td>設置する端末</td><td>1か所・1台（Phase 2 では複数台に対応）</td></tr>
+      <tr><td>規模</td><td>ユーザー 〜100人、備品 〜300点</td></tr>
+      <tr><td>ネットワーク</td><td>社内 LAN（Wi-Fi）。インターネット接続は不要</td></tr>
+      <tr><td>時刻</td><td>UNO Q は NTP で時刻を合わせる。DB には UTC で保存し、画面では JST で表示</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s3">
+  <h2><span class="no">03</span>システム構成</h2>
+  <p>2つの層に分けます。この分け方によって、将来の移設が容易になります。</p>
+  <div class="grid2">
+    <div class="layer">
+      <h3>Edge（端末機能）</h3>
+      <p>タグの読取（nfc-agent）、2段階タッチの状態管理、LED の表示</p>
+      <div class="where">配置：UNO Q → UNO Q（変わらない）</div>
+    </div>
+    <div class="layer mg">
+      <h3>Management（管理機能）</h3>
+      <p>貸出の判定、DB、REST API、Web UI</p>
+      <div class="where">配置：UNO Q → 管理PC</div>
+    </div>
+  </div>
+<pre class="mmd">
+flowchart TB
+  TAG["NTAG215&lt;br/&gt;ユーザー／備品"] -. タッチ .-> RDR[RC-S380]
+  RDR -- USB --> AGENT["nfc-agent&lt;br/&gt;別コンテナ・nfcpy"]
+  AGENT -- "UID（HTTP）" --> EDGE["Edge（App）&lt;br/&gt;nfc_reader・touch_fsm&lt;br/&gt;mgmt_client・display"]
+  EDGE -- "HTTP（MGMT_URL）" --> MGMT["Management&lt;br/&gt;FastAPI・SQLite・Web UI"]
+  EDGE -- "Bridge（RPC）" --> MCU["MCU（sketch）&lt;br/&gt;LED Matrix・RGB LED"]
+  MGMT <-- "HTTP / WebSocket" --> WEB["ブラウザ&lt;br/&gt;Web 管理画面"]
+  classDef uno fill:#E0F1F2,stroke:#00818A,color:#15212B
+  class AGENT,EDGE,MGMT,MCU uno
+</pre>
+  <p style="font-size:13px;color:var(--mu)">色付きの枠は UNO Q 上で動くもの（Phase 1）。</p>
+  <ul>
+    <li>RC-S380 は <b>nfc-agent</b>（<code>docker compose</code> で常駐させる別コンテナ）が読み取り、UID を HTTP で Edge に流します。App コンテナには USB を開く権限がないためです（PoC #2）。</li>
+    <li>Edge は Management を<b>常に HTTP で呼びます</b>。Phase 1 の接続先は <code>localhost</code> です。移設するときは <code>data/app.env</code> の <code>MGMT_URL</code> を変えるだけで済みます（arduino-app-cli は App に環境変数を渡せないため、設定はこのファイルに書く）。</li>
+    <li>Management は <b>Arduino の Brick に依存しない FastAPI の単体アプリ</b>にします。Phase 1 では App 内のスレッドで uvicorn を起動し、Phase 2 では同じコードを Docker で PC 上で動かします。</li>
+    <li>貸出の判定（業務ルール）は <b>Management だけ</b>に置きます。端末を増やしてもルールは1か所で済みます。</li>
+  </ul>
+</section>
+
+<section id="s4">
+  <h2><span class="no">04</span>コンポーネント</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>層</th><th>モジュール</th><th>責務</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill p-mu">Agent</span></td><td><code>nfc-agent/agent.py</code></td><td>nfcpy で RC-S380 をポーリングして UID を取得し、<code>GET /events</code>（1行1イベントの NDJSON）で配信する。同じ UID が1.5秒以内に続けて読まれたら無視する（かざしている間の連続読取対策）。リーダーが抜かれても3秒ごとに再接続する。<code>GET /health</code> でリーダーの接続状態を返す</td></tr>
+      <tr><td><span class="pill p-mu">Edge</span></td><td><code>nfc_reader</code></td><td>nfc-agent の <code>/events</code> を購読して UID を受け取る（接続先 <code>AGENT_URL</code>、既定は <code>http://$HOST_IP:8100</code>）。切断されたら再接続する。読取方式を差し替えられるよう<b>アダプタとして分離</b>する</td></tr>
+      <tr><td><span class="pill p-mu">Edge</span></td><td><code>touch_fsm</code></td><td>「ユーザー → 備品」の状態遷移を管理する（§5）</td></tr>
+      <tr><td><span class="pill p-mu">Edge</span></td><td><code>mgmt_client</code></td><td>Management API の呼出し。タイムアウトは3秒。失敗したら <code>OFFLINE</code> を表示する</td></tr>
+      <tr><td><span class="pill p-mu">Edge</span></td><td><code>display</code></td><td><code>Bridge.notify("show", pattern_id)</code> で MCU に表示を指示する</td></tr>
+      <tr><td><span class="pill p-mu">MCU</span></td><td><code>sketch.ino</code></td><td>表示パターンを描画する（LED Matrix・RGB LED の LED4）。<code>patterns.h</code> は <code>docs/src/gen.py</code> の <code>PATTERNS</code>（§7 の図と同じドット絵）から生成する。Python から最初の指示が来るまでは何も描かない（起動ロゴを乱さないため）</td></tr>
+      <tr><td><span class="pill p-ac">Mgmt</span></td><td><code>api</code></td><td>REST API（<code>/api/v1</code>）と WebSocket（<code>/ws/events</code>）</td></tr>
+      <tr><td><span class="pill p-ac">Mgmt</span></td><td><code>service</code></td><td>貸出の判定、登録モード、ログイン</td></tr>
+      <tr><td><span class="pill p-ac">Mgmt</span></td><td><code>repository</code></td><td>SQLAlchemy で DB にアクセスする（SQLite / PostgreSQL を切り替えられる）</td></tr>
+      <tr><td><span class="pill p-ac">Mgmt</span></td><td><code>static/</code></td><td>Web UI（HTML + JavaScript）</td></tr>
+    </tbody>
+  </table></div>
+  <h3>フォルダ構成</h3>
+<pre class="code">nfc-sample/
+├── app.yaml               # ports: [8000]、Brick なし
+├── python/
+│   ├── main.py            # Management をスレッドで起動し、Edge のループを回す
+│   ├── edge/              # nfc_reader, touch_fsm, mgmt_client, display, envfile
+│   ├── management/        # app, api, service, models, db, security, events, static/（Web UI）
+│   └── requirements.txt   # sqlalchemy（fastapi・uvicorn・httpx はベースイメージに同梱）
+├── sketch/                # sketch.ino, patterns.h（gen.py で生成）, sketch.yaml
+├── nfc-agent/             # agent.py, Dockerfile, compose.yaml（App の外で常駐）
+├── deploy/management/     # Phase 2 用の Dockerfile・compose.yaml
+├── tests/                 # pytest（sh tests/run.sh）
+├── data/                  # 実行時に作られる：DB・バックアップ・端末トークン・app.env（git 対象外）
+└── docs/                  # この設計書</pre>
+</section>
+
+<section id="s5">
+  <h2><span class="no">05</span>タッチ操作の流れ</h2>
+  <h3>シーケンス（貸出の例）</h3>
+<pre class="mmd">
+sequenceDiagram
+  actor U as 利用者
+  participant E as Edge
+  participant M as Management
+  U->>E: ① ユーザーをタッチ
+  E->>M: POST /scans
+  M-->>E: user「山田」
+  Note over E: LED：USER（10秒待つ）
+  U->>E: ② 備品をタッチ
+  E->>M: POST /scans
+  M-->>E: item
+  E->>M: POST /touches
+  Note over M: 判定してDBに記録&lt;br/&gt;画面へ WebSocket 通知
+  M-->>E: checkout
+  Note over E: LED：CHECKOUT（2秒）
+</pre>
+  <h3>端末の状態遷移</h3>
+<pre class="mmd">
+flowchart LR
+  START(( )) --> IDLE([待機])
+  IDLE -- ユーザー --> USER([ユーザー認識])
+  USER -- 別のユーザー --> USER
+  USER -- 備品 --> JUDGE([判定中])
+  USER -- 10秒経過 --> IDLE
+  IDLE -- 備品・未登録 --> RESULT([結果表示])
+  USER -- 未登録 --> RESULT
+  JUDGE -- 応答・通信失敗 --> RESULT
+  RESULT -- 2〜3秒 --> IDLE
+</pre>
+  <div class="tbl"><table>
+    <thead><tr><th>いまの状態</th><th>きっかけ</th><th>次の状態</th><th>LED 表示</th></tr></thead>
+    <tbody>
+      <tr><td>待機</td><td>ユーザーのタグ</td><td>ユーザー認識</td><td>USER</td></tr>
+      <tr><td>待機</td><td>備品のタグ</td><td>結果表示</td><td>ERROR（先にユーザーをタッチ）</td></tr>
+      <tr><td>待機・ユーザー認識</td><td>未登録のタグ</td><td>結果表示</td><td>UNKNOWN（登録モード中は CAPTURED）</td></tr>
+      <tr><td>ユーザー認識</td><td>別のユーザーのタグ</td><td>ユーザー認識（差し替え）</td><td>USER</td></tr>
+      <tr><td>ユーザー認識</td><td>備品のタグ</td><td>判定中 → 結果表示</td><td>CHECKOUT / RETURN / TRANSFER / ERROR。通信失敗は OFFLINE</td></tr>
+      <tr><td>ユーザー認識</td><td>10秒経過</td><td>待機</td><td>IDLE</td></tr>
+      <tr><td>結果表示</td><td>2〜3秒経過</td><td>待機</td><td>IDLE</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s6">
+  <h2><span class="no">06</span>業務ルール</h2>
+  <p><code>POST /api/v1/touches</code> で Management が判定します。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>備品の状態</th><th>タッチしたユーザー</th><th>結果</th><th>記録する内容</th></tr></thead>
+    <tbody>
+      <tr><td>在庫あり</td><td>誰でも</td><td><span class="pill p-ok">貸出 checkout</span></td><td>貸出を1件追加</td></tr>
+      <tr><td>貸出中</td><td>借りている本人</td><td><span class="pill p-ok">返却 return</span></td><td>貸出を終了（<code>end_reason=return</code>）</td></tr>
+      <tr><td>貸出中</td><td>別のユーザー</td><td><span class="pill p-ok">切替 transfer</span></td><td>今の貸出を終了（<code>end_reason=transfer</code>）し、新しい貸出を追加。<b>1トランザクションで処理する</b></td></tr>
+      <tr><td>無効化されている</td><td>—</td><td><span class="pill p-ng">エラー error</span></td><td>なし（無効化されたユーザーの場合も同じ）</td></tr>
+    </tbody>
+  </table></div>
+  <h3>タグの登録（要件6）</h3>
+  <ol class="steps">
+    <li>管理者が Web 画面で「ユーザー追加」または「備品追加」を開き、<b>［タグを読み取る］</b>を押す（登録モードが60秒間有効になる）</li>
+    <li>端末でタグをタッチする → UID がフォームに自動で入力される（LED は <code>CAPTURED</code>）</li>
+    <li>名前・部署・保管場所などを入力・修正して保存する。登録後もいつでも編集できる</li>
+  </ol>
+  <p>登録モード以外で未登録のタグがタッチされた場合は「未登録タグ」一覧に記録し、そこからも登録できます。タグを紛失したときは、編集画面で新しいタグを読み取って UID を差し替えます（履歴はそのまま残ります）。</p>
+</section>
+
+<section id="s7">
+  <h2><span class="no">07</span>LED 表示仕様</h2>
+  <p>LED Matrix（8×13、8段階の明るさ）と RGB LED を組み合わせ、離れた場所からでも結果が分かるようにします。</p>
+  <figure class="fig dark" style="margin:0"><svg viewBox="0 0 788 718" role="img" aria-label="LED Matrix 表示パターン" style="width:100%;height:auto;min-width:567px"><rect class="d-bg" x="0" y="0" width="788" height="718"/><rect x="20" y="20" width="232" height="152" rx="10" fill="#0B1322"/><circle class="d-led-lit" cx="40.0" cy="40.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="56.0" cy="40.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="72.0" cy="40.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="88.0" cy="40.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="104.0" cy="40.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="120.0" cy="40.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="136.0" cy="40.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="152.0" cy="40.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="168.0" cy="40.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="184.0" cy="40.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="200.0" cy="40.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="216.0" cy="40.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="232.0" cy="40.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="40.0" cy="56.0" r="5.4" opacity=".38"/><circle class="d-led-dark" cx="56.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="104.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="120.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="136.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="152.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="168.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="184.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="56.0" r="3.888"/><circle class="d-led-lit" cx="232.0" cy="56.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="40.0" cy="72.0" r="5.4" opacity=".38"/><circle class="d-led-dark" cx="56.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="72.0" r="3.888"/><circle class="d-led-lit" cx="104.0" cy="72.0" r="5.4"/><circle class="d-led-lit" cx="120.0" cy="72.0" r="5.4"/><circle class="d-led-lit" cx="136.0" cy="72.0" r="5.4"/><circle class="d-led-lit" cx="152.0" cy="72.0" r="5.4"/><circle class="d-led-lit" cx="168.0" cy="72.0" r="5.4"/><circle class="d-led-dark" cx="184.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="72.0" r="3.888"/><circle class="d-led-lit" cx="232.0" cy="72.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="40.0" cy="88.0" r="5.4" opacity=".38"/><circle class="d-led-dark" cx="56.0" cy="88.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="88.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="88.0" r="3.888"/><circle class="d-led-lit" cx="104.0" cy="88.0" r="5.4"/><circle class="d-led-dark" cx="120.0" cy="88.0" r="3.888"/><circle class="d-led-dark" cx="136.0" cy="88.0" r="3.888"/><circle class="d-led-dark" cx="152.0" cy="88.0" r="3.888"/><circle class="d-led-lit" cx="168.0" cy="88.0" r="5.4"/><circle class="d-led-dark" cx="184.0" cy="88.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="88.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="88.0" r="3.888"/><circle class="d-led-lit" cx="232.0" cy="88.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="40.0" cy="104.0" r="5.4" opacity=".38"/><circle class="d-led-dark" cx="56.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="104.0" r="3.888"/><circle class="d-led-lit" cx="104.0" cy="104.0" r="5.4"/><circle class="d-led-dark" cx="120.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="136.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="152.0" cy="104.0" r="3.888"/><circle class="d-led-lit" cx="168.0" cy="104.0" r="5.4"/><circle class="d-led-dark" cx="184.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="104.0" r="3.888"/><circle class="d-led-lit" cx="232.0" cy="104.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="40.0" cy="120.0" r="5.4" opacity=".38"/><circle class="d-led-dark" cx="56.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="120.0" r="3.888"/><circle class="d-led-lit" cx="104.0" cy="120.0" r="5.4"/><circle class="d-led-lit" cx="120.0" cy="120.0" r="5.4"/><circle class="d-led-lit" cx="136.0" cy="120.0" r="5.4"/><circle class="d-led-lit" cx="152.0" cy="120.0" r="5.4"/><circle class="d-led-lit" cx="168.0" cy="120.0" r="5.4"/><circle class="d-led-dark" cx="184.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="120.0" r="3.888"/><circle class="d-led-lit" cx="232.0" cy="120.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="40.0" cy="136.0" r="5.4" opacity=".38"/><circle class="d-led-dark" cx="56.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="104.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="120.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="136.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="152.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="168.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="184.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="136.0" r="3.888"/><circle class="d-led-lit" cx="232.0" cy="136.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="40.0" cy="152.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="56.0" cy="152.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="72.0" cy="152.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="88.0" cy="152.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="104.0" cy="152.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="120.0" cy="152.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="136.0" cy="152.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="152.0" cy="152.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="168.0" cy="152.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="184.0" cy="152.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="200.0" cy="152.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="216.0" cy="152.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="232.0" cy="152.0" r="5.4" opacity=".38"/><text class="d-h" x="20" y="194" text-anchor="start">待機</text><text class="d-m" x="252" y="194" text-anchor="end">IDLE</text><text class="d-s" x="20" y="213" text-anchor="start">カードのタッチ待ち</text><text class="d-s" x="20" y="230" text-anchor="start">RGB LED：青／常時・ゆっくり明滅</text><rect x="278" y="20" width="232" height="152" rx="10" fill="#0B1322"/><circle class="d-led-dark" cx="298.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="362.0" cy="40.0" r="3.888"/><circle class="d-led-lit" cx="378.0" cy="40.0" r="5.4"/><circle class="d-led-lit" cx="394.0" cy="40.0" r="5.4"/><circle class="d-led-lit" cx="410.0" cy="40.0" r="5.4"/><circle class="d-led-dark" cx="426.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="442.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="362.0" cy="56.0" r="3.888"/><circle class="d-led-lit" cx="378.0" cy="56.0" r="5.4"/><circle class="d-led-lit" cx="394.0" cy="56.0" r="5.4"/><circle class="d-led-lit" cx="410.0" cy="56.0" r="5.4"/><circle class="d-led-dark" cx="426.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="442.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="362.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="378.0" cy="72.0" r="3.888"/><circle class="d-led-lit" cx="394.0" cy="72.0" r="5.4"/><circle class="d-led-dark" cx="410.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="426.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="442.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="88.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="88.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="88.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="88.0" r="3.888"/><circle class="d-led-lit" cx="362.0" cy="88.0" r="5.4"/><circle class="d-led-lit" cx="378.0" cy="88.0" r="5.4"/><circle class="d-led-lit" cx="394.0" cy="88.0" r="5.4"/><circle class="d-led-lit" cx="410.0" cy="88.0" r="5.4"/><circle class="d-led-lit" cx="426.0" cy="88.0" r="5.4"/><circle class="d-led-dark" cx="442.0" cy="88.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="88.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="88.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="88.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="362.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="378.0" cy="104.0" r="3.888"/><circle class="d-led-lit" cx="394.0" cy="104.0" r="5.4"/><circle class="d-led-dark" cx="410.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="426.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="442.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="362.0" cy="120.0" r="3.888"/><circle class="d-led-lit" cx="378.0" cy="120.0" r="5.4"/><circle class="d-led-dark" cx="394.0" cy="120.0" r="3.888"/><circle class="d-led-lit" cx="410.0" cy="120.0" r="5.4"/><circle class="d-led-dark" cx="426.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="442.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="362.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="378.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="394.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="410.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="426.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="442.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="136.0" r="3.888"/><circle class="d-led-lit" cx="298.0" cy="152.0" r="5.4"/><circle class="d-led-lit" cx="314.0" cy="152.0" r="5.4"/><circle class="d-led-lit" cx="330.0" cy="152.0" r="5.4"/><circle class="d-led-lit" cx="346.0" cy="152.0" r="5.4"/><circle class="d-led-lit" cx="362.0" cy="152.0" r="5.4"/><circle class="d-led-lit" cx="378.0" cy="152.0" r="5.4"/><circle class="d-led-lit" cx="394.0" cy="152.0" r="5.4"/><circle class="d-led-lit" cx="410.0" cy="152.0" r="5.4"/><circle class="d-led-lit" cx="426.0" cy="152.0" r="5.4"/><circle class="d-led-lit" cx="442.0" cy="152.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="458.0" cy="152.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="474.0" cy="152.0" r="5.4" opacity=".38"/><circle class="d-led-lit" cx="490.0" cy="152.0" r="5.4" opacity=".38"/><text class="d-h" x="278" y="194" text-anchor="start">ユーザー認識</text><text class="d-m" x="510" y="194" text-anchor="end">USER</text><text class="d-s" x="278" y="213" text-anchor="start">10秒以内に備品をタッチ</text><text class="d-s" x="278" y="230" text-anchor="start">RGB LED：青／最大10秒・下段バーが減る</text><rect x="536" y="20" width="232" height="152" rx="10" fill="#0B1322"/><circle class="d-led-lit" cx="556.0" cy="40.0" r="5.4"/><circle class="d-led-dark" cx="572.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="652.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="668.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="684.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="700.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="716.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="40.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="40.0" r="3.888"/><circle class="d-led-lit" cx="556.0" cy="56.0" r="5.4"/><circle class="d-led-dark" cx="572.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="652.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="668.0" cy="56.0" r="3.888"/><circle class="d-led-lit" cx="684.0" cy="56.0" r="5.4"/><circle class="d-led-dark" cx="700.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="716.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="56.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="56.0" r="3.888"/><circle class="d-led-lit" cx="556.0" cy="72.0" r="5.4"/><circle class="d-led-dark" cx="572.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="652.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="668.0" cy="72.0" r="3.888"/><circle class="d-led-lit" cx="684.0" cy="72.0" r="5.4"/><circle class="d-led-lit" cx="700.0" cy="72.0" r="5.4"/><circle class="d-led-dark" cx="716.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="72.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="72.0" r="3.888"/><circle class="d-led-lit" cx="556.0" cy="88.0" r="5.4"/><circle class="d-led-dark" cx="572.0" cy="88.0" r="3.888"/><circle class="d-led-lit" cx="588.0" cy="88.0" r="5.4"/><circle class="d-led-lit" cx="604.0" cy="88.0" r="5.4"/><circle class="d-led-lit" cx="620.0" cy="88.0" r="5.4"/><circle class="d-led-lit" cx="636.0" cy="88.0" r="5.4"/><circle class="d-led-lit" cx="652.0" cy="88.0" r="5.4"/><circle class="d-led-lit" cx="668.0" cy="88.0" r="5.4"/><circle class="d-led-lit" cx="684.0" cy="88.0" r="5.4"/><circle class="d-led-lit" cx="700.0" cy="88.0" r="5.4"/><circle class="d-led-lit" cx="716.0" cy="88.0" r="5.4"/><circle class="d-led-dark" cx="732.0" cy="88.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="88.0" r="3.888"/><circle class="d-led-lit" cx="556.0" cy="104.0" r="5.4"/><circle class="d-led-dark" cx="572.0" cy="104.0" r="3.888"/><circle class="d-led-lit" cx="588.0" cy="104.0" r="5.4"/><circle class="d-led-lit" cx="604.0" cy="104.0" r="5.4"/><circle class="d-led-lit" cx="620.0" cy="104.0" r="5.4"/><circle class="d-led-lit" cx="636.0" cy="104.0" r="5.4"/><circle class="d-led-lit" cx="652.0" cy="104.0" r="5.4"/><circle class="d-led-lit" cx="668.0" cy="104.0" r="5.4"/><circle class="d-led-lit" cx="684.0" cy="104.0" r="5.4"/><circle class="d-led-lit" cx="700.0" cy="104.0" r="5.4"/><circle class="d-led-lit" cx="716.0" cy="104.0" r="5.4"/><circle class="d-led-dark" cx="732.0" cy="104.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="104.0" r="3.888"/><circle class="d-led-lit" cx="556.0" cy="120.0" r="5.4"/><circle class="d-led-dark" cx="572.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="652.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="668.0" cy="120.0" r="3.888"/><circle class="d-led-lit" cx="684.0" cy="120.0" r="5.4"/><circle class="d-led-lit" cx="700.0" cy="120.0" r="5.4"/><circle class="d-led-dark" cx="716.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="120.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="120.0" r="3.888"/><circle class="d-led-lit" cx="556.0" cy="136.0" r="5.4"/><circle class="d-led-dark" cx="572.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="652.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="668.0" cy="136.0" r="3.888"/><circle class="d-led-lit" cx="684.0" cy="136.0" r="5.4"/><circle class="d-led-dark" cx="700.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="716.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="136.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="136.0" r="3.888"/><circle class="d-led-lit" cx="556.0" cy="152.0" r="5.4"/><circle class="d-led-dark" cx="572.0" cy="152.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="152.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="152.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="152.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="152.0" r="3.888"/><circle class="d-led-dark" cx="652.0" cy="152.0" r="3.888"/><circle class="d-led-dark" cx="668.0" cy="152.0" r="3.888"/><circle class="d-led-dark" cx="684.0" cy="152.0" r="3.888"/><circle class="d-led-dark" cx="700.0" cy="152.0" r="3.888"/><circle class="d-led-dark" cx="716.0" cy="152.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="152.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="152.0" r="3.888"/><text class="d-h" x="536" y="194" text-anchor="start">貸出</text><text class="d-m" x="768" y="194" text-anchor="end">CHECKOUT</text><text class="d-s" x="536" y="213" text-anchor="start">棚から出ていく矢印</text><text class="d-s" x="536" y="230" text-anchor="start">RGB LED：緑／2秒</text><rect x="20" y="252" width="232" height="152" rx="10" fill="#0B1322"/><circle class="d-led-lit" cx="40.0" cy="272.0" r="5.4"/><circle class="d-led-dark" cx="56.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="104.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="120.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="136.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="152.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="168.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="184.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="232.0" cy="272.0" r="3.888"/><circle class="d-led-lit" cx="40.0" cy="288.0" r="5.4"/><circle class="d-led-dark" cx="56.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="288.0" r="3.888"/><circle class="d-led-lit" cx="104.0" cy="288.0" r="5.4"/><circle class="d-led-dark" cx="120.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="136.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="152.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="168.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="184.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="232.0" cy="288.0" r="3.888"/><circle class="d-led-lit" cx="40.0" cy="304.0" r="5.4"/><circle class="d-led-dark" cx="56.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="304.0" r="3.888"/><circle class="d-led-lit" cx="88.0" cy="304.0" r="5.4"/><circle class="d-led-lit" cx="104.0" cy="304.0" r="5.4"/><circle class="d-led-dark" cx="120.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="136.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="152.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="168.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="184.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="232.0" cy="304.0" r="3.888"/><circle class="d-led-lit" cx="40.0" cy="320.0" r="5.4"/><circle class="d-led-dark" cx="56.0" cy="320.0" r="3.888"/><circle class="d-led-lit" cx="72.0" cy="320.0" r="5.4"/><circle class="d-led-lit" cx="88.0" cy="320.0" r="5.4"/><circle class="d-led-lit" cx="104.0" cy="320.0" r="5.4"/><circle class="d-led-lit" cx="120.0" cy="320.0" r="5.4"/><circle class="d-led-lit" cx="136.0" cy="320.0" r="5.4"/><circle class="d-led-lit" cx="152.0" cy="320.0" r="5.4"/><circle class="d-led-lit" cx="168.0" cy="320.0" r="5.4"/><circle class="d-led-lit" cx="184.0" cy="320.0" r="5.4"/><circle class="d-led-lit" cx="200.0" cy="320.0" r="5.4"/><circle class="d-led-dark" cx="216.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="232.0" cy="320.0" r="3.888"/><circle class="d-led-lit" cx="40.0" cy="336.0" r="5.4"/><circle class="d-led-dark" cx="56.0" cy="336.0" r="3.888"/><circle class="d-led-lit" cx="72.0" cy="336.0" r="5.4"/><circle class="d-led-lit" cx="88.0" cy="336.0" r="5.4"/><circle class="d-led-lit" cx="104.0" cy="336.0" r="5.4"/><circle class="d-led-lit" cx="120.0" cy="336.0" r="5.4"/><circle class="d-led-lit" cx="136.0" cy="336.0" r="5.4"/><circle class="d-led-lit" cx="152.0" cy="336.0" r="5.4"/><circle class="d-led-lit" cx="168.0" cy="336.0" r="5.4"/><circle class="d-led-lit" cx="184.0" cy="336.0" r="5.4"/><circle class="d-led-lit" cx="200.0" cy="336.0" r="5.4"/><circle class="d-led-dark" cx="216.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="232.0" cy="336.0" r="3.888"/><circle class="d-led-lit" cx="40.0" cy="352.0" r="5.4"/><circle class="d-led-dark" cx="56.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="352.0" r="3.888"/><circle class="d-led-lit" cx="88.0" cy="352.0" r="5.4"/><circle class="d-led-lit" cx="104.0" cy="352.0" r="5.4"/><circle class="d-led-dark" cx="120.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="136.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="152.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="168.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="184.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="232.0" cy="352.0" r="3.888"/><circle class="d-led-lit" cx="40.0" cy="368.0" r="5.4"/><circle class="d-led-dark" cx="56.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="368.0" r="3.888"/><circle class="d-led-lit" cx="104.0" cy="368.0" r="5.4"/><circle class="d-led-dark" cx="120.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="136.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="152.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="168.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="184.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="232.0" cy="368.0" r="3.888"/><circle class="d-led-lit" cx="40.0" cy="384.0" r="5.4"/><circle class="d-led-dark" cx="56.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="104.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="120.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="136.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="152.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="168.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="184.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="232.0" cy="384.0" r="3.888"/><text class="d-h" x="20" y="426" text-anchor="start">返却</text><text class="d-m" x="252" y="426" text-anchor="end">RETURN</text><text class="d-s" x="20" y="445" text-anchor="start">棚へ戻る矢印</text><text class="d-s" x="20" y="462" text-anchor="start">RGB LED：緑／2秒</text><rect x="278" y="252" width="232" height="152" rx="10" fill="#0B1322"/><circle class="d-led-dark" cx="298.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="362.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="378.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="394.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="410.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="426.0" cy="272.0" r="3.888"/><circle class="d-led-lit" cx="442.0" cy="272.0" r="5.4"/><circle class="d-led-dark" cx="458.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="288.0" r="3.888"/><circle class="d-led-lit" cx="330.0" cy="288.0" r="5.4"/><circle class="d-led-lit" cx="346.0" cy="288.0" r="5.4"/><circle class="d-led-lit" cx="362.0" cy="288.0" r="5.4"/><circle class="d-led-lit" cx="378.0" cy="288.0" r="5.4"/><circle class="d-led-lit" cx="394.0" cy="288.0" r="5.4"/><circle class="d-led-lit" cx="410.0" cy="288.0" r="5.4"/><circle class="d-led-lit" cx="426.0" cy="288.0" r="5.4"/><circle class="d-led-lit" cx="442.0" cy="288.0" r="5.4"/><circle class="d-led-lit" cx="458.0" cy="288.0" r="5.4"/><circle class="d-led-dark" cx="474.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="362.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="378.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="394.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="410.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="426.0" cy="304.0" r="3.888"/><circle class="d-led-lit" cx="442.0" cy="304.0" r="5.4"/><circle class="d-led-dark" cx="458.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="362.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="378.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="394.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="410.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="426.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="442.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="362.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="378.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="394.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="410.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="426.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="442.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="352.0" r="3.888"/><circle class="d-led-lit" cx="346.0" cy="352.0" r="5.4"/><circle class="d-led-dark" cx="362.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="378.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="394.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="410.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="426.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="442.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="368.0" r="3.888"/><circle class="d-led-lit" cx="330.0" cy="368.0" r="5.4"/><circle class="d-led-lit" cx="346.0" cy="368.0" r="5.4"/><circle class="d-led-lit" cx="362.0" cy="368.0" r="5.4"/><circle class="d-led-lit" cx="378.0" cy="368.0" r="5.4"/><circle class="d-led-lit" cx="394.0" cy="368.0" r="5.4"/><circle class="d-led-lit" cx="410.0" cy="368.0" r="5.4"/><circle class="d-led-lit" cx="426.0" cy="368.0" r="5.4"/><circle class="d-led-lit" cx="442.0" cy="368.0" r="5.4"/><circle class="d-led-lit" cx="458.0" cy="368.0" r="5.4"/><circle class="d-led-dark" cx="474.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="384.0" r="3.888"/><circle class="d-led-lit" cx="346.0" cy="384.0" r="5.4"/><circle class="d-led-dark" cx="362.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="378.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="394.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="410.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="426.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="442.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="384.0" r="3.888"/><text class="d-h" x="278" y="426" text-anchor="start">貸出者切替</text><text class="d-m" x="510" y="426" text-anchor="end">TRANSFER</text><text class="d-s" x="278" y="445" text-anchor="start">前の人を返却し新しい人へ貸出</text><text class="d-s" x="278" y="462" text-anchor="start">RGB LED：緑／2秒</text><rect x="536" y="252" width="232" height="152" rx="10" fill="#0B1322"/><circle class="d-led-dark" cx="556.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="572.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="272.0" r="3.888"/><circle class="d-led-lit" cx="604.0" cy="272.0" r="5.4"/><circle class="d-led-dark" cx="620.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="652.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="668.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="684.0" cy="272.0" r="3.888"/><circle class="d-led-lit" cx="700.0" cy="272.0" r="5.4"/><circle class="d-led-dark" cx="716.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="272.0" r="3.888"/><circle class="d-led-dark" cx="556.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="572.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="288.0" r="3.888"/><circle class="d-led-lit" cx="620.0" cy="288.0" r="5.4"/><circle class="d-led-dark" cx="636.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="652.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="668.0" cy="288.0" r="3.888"/><circle class="d-led-lit" cx="684.0" cy="288.0" r="5.4"/><circle class="d-led-dark" cx="700.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="716.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="288.0" r="3.888"/><circle class="d-led-dark" cx="556.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="572.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="304.0" r="3.888"/><circle class="d-led-lit" cx="636.0" cy="304.0" r="5.4"/><circle class="d-led-dark" cx="652.0" cy="304.0" r="3.888"/><circle class="d-led-lit" cx="668.0" cy="304.0" r="5.4"/><circle class="d-led-dark" cx="684.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="700.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="716.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="304.0" r="3.888"/><circle class="d-led-dark" cx="556.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="572.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="320.0" r="3.888"/><circle class="d-led-lit" cx="652.0" cy="320.0" r="5.4"/><circle class="d-led-dark" cx="668.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="684.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="700.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="716.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="320.0" r="3.888"/><circle class="d-led-dark" cx="556.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="572.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="336.0" r="3.888"/><circle class="d-led-lit" cx="636.0" cy="336.0" r="5.4"/><circle class="d-led-dark" cx="652.0" cy="336.0" r="3.888"/><circle class="d-led-lit" cx="668.0" cy="336.0" r="5.4"/><circle class="d-led-dark" cx="684.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="700.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="716.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="336.0" r="3.888"/><circle class="d-led-dark" cx="556.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="572.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="352.0" r="3.888"/><circle class="d-led-lit" cx="620.0" cy="352.0" r="5.4"/><circle class="d-led-dark" cx="636.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="652.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="668.0" cy="352.0" r="3.888"/><circle class="d-led-lit" cx="684.0" cy="352.0" r="5.4"/><circle class="d-led-dark" cx="700.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="716.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="352.0" r="3.888"/><circle class="d-led-dark" cx="556.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="572.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="368.0" r="3.888"/><circle class="d-led-lit" cx="604.0" cy="368.0" r="5.4"/><circle class="d-led-dark" cx="620.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="652.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="668.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="684.0" cy="368.0" r="3.888"/><circle class="d-led-lit" cx="700.0" cy="368.0" r="5.4"/><circle class="d-led-dark" cx="716.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="368.0" r="3.888"/><circle class="d-led-dark" cx="556.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="572.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="652.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="668.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="684.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="700.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="716.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="384.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="384.0" r="3.888"/><text class="d-h" x="536" y="426" text-anchor="start">エラー</text><text class="d-m" x="768" y="426" text-anchor="end">ERROR</text><text class="d-s" x="536" y="445" text-anchor="start">順番違い・無効化されたタグ</text><text class="d-s" x="536" y="462" text-anchor="start">RGB LED：赤／2秒</text><rect x="20" y="484" width="232" height="152" rx="10" fill="#0B1322"/><circle class="d-led-dark" cx="40.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="56.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="104.0" cy="504.0" r="3.888"/><circle class="d-led-lit" cx="120.0" cy="504.0" r="5.4"/><circle class="d-led-lit" cx="136.0" cy="504.0" r="5.4"/><circle class="d-led-lit" cx="152.0" cy="504.0" r="5.4"/><circle class="d-led-dark" cx="168.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="184.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="232.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="40.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="56.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="520.0" r="3.888"/><circle class="d-led-lit" cx="104.0" cy="520.0" r="5.4"/><circle class="d-led-dark" cx="120.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="136.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="152.0" cy="520.0" r="3.888"/><circle class="d-led-lit" cx="168.0" cy="520.0" r="5.4"/><circle class="d-led-dark" cx="184.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="232.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="40.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="56.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="104.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="120.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="136.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="152.0" cy="536.0" r="3.888"/><circle class="d-led-lit" cx="168.0" cy="536.0" r="5.4"/><circle class="d-led-dark" cx="184.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="232.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="40.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="56.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="104.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="120.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="136.0" cy="552.0" r="3.888"/><circle class="d-led-lit" cx="152.0" cy="552.0" r="5.4"/><circle class="d-led-dark" cx="168.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="184.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="232.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="40.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="56.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="104.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="120.0" cy="568.0" r="3.888"/><circle class="d-led-lit" cx="136.0" cy="568.0" r="5.4"/><circle class="d-led-dark" cx="152.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="168.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="184.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="232.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="40.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="56.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="104.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="120.0" cy="584.0" r="3.888"/><circle class="d-led-lit" cx="136.0" cy="584.0" r="5.4"/><circle class="d-led-dark" cx="152.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="168.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="184.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="232.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="40.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="56.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="104.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="120.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="136.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="152.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="168.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="184.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="232.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="40.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="56.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="72.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="88.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="104.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="120.0" cy="616.0" r="3.888"/><circle class="d-led-lit" cx="136.0" cy="616.0" r="5.4"/><circle class="d-led-dark" cx="152.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="168.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="184.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="200.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="216.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="232.0" cy="616.0" r="3.888"/><text class="d-h" x="20" y="658" text-anchor="start">未登録タグ</text><text class="d-m" x="252" y="658" text-anchor="end">UNKNOWN</text><text class="d-s" x="20" y="677" text-anchor="start">Web画面の未登録一覧に追加</text><text class="d-s" x="20" y="694" text-anchor="start">RGB LED：黄／2秒</text><rect x="278" y="484" width="232" height="152" rx="10" fill="#0B1322"/><circle class="d-led-dark" cx="298.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="362.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="378.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="394.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="410.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="426.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="442.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="362.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="378.0" cy="520.0" r="3.888"/><circle class="d-led-lit" cx="394.0" cy="520.0" r="5.4"/><circle class="d-led-dark" cx="410.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="426.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="442.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="362.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="378.0" cy="536.0" r="3.888"/><circle class="d-led-lit" cx="394.0" cy="536.0" r="5.4"/><circle class="d-led-dark" cx="410.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="426.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="442.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="552.0" r="3.888"/><circle class="d-led-lit" cx="346.0" cy="552.0" r="5.4"/><circle class="d-led-lit" cx="362.0" cy="552.0" r="5.4"/><circle class="d-led-lit" cx="378.0" cy="552.0" r="5.4"/><circle class="d-led-lit" cx="394.0" cy="552.0" r="5.4"/><circle class="d-led-lit" cx="410.0" cy="552.0" r="5.4"/><circle class="d-led-lit" cx="426.0" cy="552.0" r="5.4"/><circle class="d-led-lit" cx="442.0" cy="552.0" r="5.4"/><circle class="d-led-dark" cx="458.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="362.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="378.0" cy="568.0" r="3.888"/><circle class="d-led-lit" cx="394.0" cy="568.0" r="5.4"/><circle class="d-led-dark" cx="410.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="426.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="442.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="362.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="378.0" cy="584.0" r="3.888"/><circle class="d-led-lit" cx="394.0" cy="584.0" r="5.4"/><circle class="d-led-dark" cx="410.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="426.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="442.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="362.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="378.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="394.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="410.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="426.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="442.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="298.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="314.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="330.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="346.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="362.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="378.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="394.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="410.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="426.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="442.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="458.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="474.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="490.0" cy="616.0" r="3.888"/><text class="d-h" x="278" y="658" text-anchor="start">登録用に読取</text><text class="d-m" x="510" y="658" text-anchor="end">CAPTURED</text><text class="d-s" x="278" y="677" text-anchor="start">Web画面の登録フォームへUIDを送信</text><text class="d-s" x="278" y="694" text-anchor="start">RGB LED：水色／2秒</text><rect x="536" y="484" width="232" height="152" rx="10" fill="#0B1322"/><circle class="d-led-dark" cx="556.0" cy="504.0" r="3.888"/><circle class="d-led-lit" cx="572.0" cy="504.0" r="5.4"/><circle class="d-led-lit" cx="588.0" cy="504.0" r="5.4"/><circle class="d-led-dark" cx="604.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="652.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="668.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="684.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="700.0" cy="504.0" r="3.888"/><circle class="d-led-lit" cx="716.0" cy="504.0" r="5.4"/><circle class="d-led-lit" cx="732.0" cy="504.0" r="5.4"/><circle class="d-led-dark" cx="748.0" cy="504.0" r="3.888"/><circle class="d-led-dark" cx="556.0" cy="520.0" r="3.888"/><circle class="d-led-lit" cx="572.0" cy="520.0" r="5.4"/><circle class="d-led-dark" cx="588.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="520.0" r="3.888"/><circle class="d-led-lit" cx="652.0" cy="520.0" r="5.4"/><circle class="d-led-dark" cx="668.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="684.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="700.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="716.0" cy="520.0" r="3.888"/><circle class="d-led-lit" cx="732.0" cy="520.0" r="5.4"/><circle class="d-led-dark" cx="748.0" cy="520.0" r="3.888"/><circle class="d-led-dark" cx="556.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="572.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="536.0" r="3.888"/><circle class="d-led-lit" cx="652.0" cy="536.0" r="5.4"/><circle class="d-led-dark" cx="668.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="684.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="700.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="716.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="536.0" r="3.888"/><circle class="d-led-dark" cx="556.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="572.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="552.0" r="3.888"/><circle class="d-led-lit" cx="652.0" cy="552.0" r="5.4"/><circle class="d-led-dark" cx="668.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="684.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="700.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="716.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="552.0" r="3.888"/><circle class="d-led-dark" cx="556.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="572.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="568.0" r="3.888"/><circle class="d-led-lit" cx="652.0" cy="568.0" r="5.4"/><circle class="d-led-dark" cx="668.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="684.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="700.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="716.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="568.0" r="3.888"/><circle class="d-led-dark" cx="556.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="572.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="588.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="652.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="668.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="684.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="700.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="716.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="732.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="748.0" cy="584.0" r="3.888"/><circle class="d-led-dark" cx="556.0" cy="600.0" r="3.888"/><circle class="d-led-lit" cx="572.0" cy="600.0" r="5.4"/><circle class="d-led-dark" cx="588.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="604.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="600.0" r="3.888"/><circle class="d-led-lit" cx="652.0" cy="600.0" r="5.4"/><circle class="d-led-dark" cx="668.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="684.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="700.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="716.0" cy="600.0" r="3.888"/><circle class="d-led-lit" cx="732.0" cy="600.0" r="5.4"/><circle class="d-led-dark" cx="748.0" cy="600.0" r="3.888"/><circle class="d-led-dark" cx="556.0" cy="616.0" r="3.888"/><circle class="d-led-lit" cx="572.0" cy="616.0" r="5.4"/><circle class="d-led-lit" cx="588.0" cy="616.0" r="5.4"/><circle class="d-led-dark" cx="604.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="620.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="636.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="652.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="668.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="684.0" cy="616.0" r="3.888"/><circle class="d-led-dark" cx="700.0" cy="616.0" r="3.888"/><circle class="d-led-lit" cx="716.0" cy="616.0" r="5.4"/><circle class="d-led-lit" cx="732.0" cy="616.0" r="5.4"/><circle class="d-led-dark" cx="748.0" cy="616.0" r="3.888"/><text class="d-h" x="536" y="658" text-anchor="start">サーバー未接続</text><text class="d-m" x="768" y="658" text-anchor="end">OFFLINE</text><text class="d-s" x="536" y="677" text-anchor="start">管理機能と通信できない</text><text class="d-s" x="536" y="694" text-anchor="start">RGB LED：赤（点滅）／3秒</text></svg><figcaption>表示パターン（実寸の 8×13 ドット。薄い点は明るさを下げた LED）</figcaption></figure>
+  <div class="tbl"><table>
+    <thead><tr><th>パターン</th><th>表示するタイミング</th><th>RGB LED</th><th>表示時間</th></tr></thead>
+    <tbody>
+      <tr><td><code>IDLE</code></td><td>タッチ待ち</td><td><span class="rgb" style="background:#3D7BFF"></span>青</td><td>常時（ゆっくり明滅）</td></tr>
+      <tr><td><code>USER</code></td><td>ユーザーを認識した</td><td><span class="rgb" style="background:#3D7BFF"></span>青</td><td>最大10秒（下段のバーが減っていく）</td></tr>
+      <tr><td><code>CHECKOUT</code> <code>RETURN</code> <code>TRANSFER</code></td><td>貸出・返却・切替に成功した</td><td><span class="rgb" style="background:#22C55E"></span>緑</td><td>2秒</td></tr>
+      <tr><td><code>ERROR</code></td><td>操作の順番違い、無効化されたタグ</td><td><span class="rgb" style="background:#EF4444"></span>赤</td><td>2秒</td></tr>
+      <tr><td><code>UNKNOWN</code></td><td>未登録のタグ</td><td><span class="rgb" style="background:#EAB308"></span>黄</td><td>2秒</td></tr>
+      <tr><td><code>CAPTURED</code></td><td>登録モードで UID を受け付けた</td><td><span class="rgb" style="background:#22D3EE"></span>水色</td><td>2秒</td></tr>
+      <tr><td><code>OFFLINE</code></td><td>Management と通信できない</td><td><span class="rgb" style="background:#EF4444"></span>赤（点滅）</td><td>3秒</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li>起動直後の20〜30秒は UNO Q の起動ロゴが出ているため、sketch はその後に描画を始めます。</li>
+    <li>Bridge は <code>notify</code>（応答を待たない）を使い、タッチへの反応を遅らせません。</li>
+  </ul>
+</section>
+
+<section id="s8">
+  <h2><span class="no">08</span>データモデル</h2>
+<pre class="mmd">
+erDiagram
+  users ||--o{ loans : "借りる"
+  items ||--o{ loans : "貸し出される"
+  devices ||--o{ loans : "記録した端末"
+  users {
+    int id PK
+    text tag_uid UK
+    text name
+  }
+  items {
+    int id PK
+    text tag_uid UK
+    text name
+  }
+  devices {
+    text id PK
+    text name
+  }
+  loans {
+    int item_id FK
+    int user_id FK
+    text device_id FK
+    datetime started_at
+    datetime ended_at
+  }
+</pre>
+  <div class="tbl"><table>
+    <thead><tr><th>テーブル</th><th>内容</th><th>列</th></tr></thead>
+    <tbody>
+      <tr><td><code>users</code></td><td style="white-space:nowrap">ユーザー</td><td>id, <b>tag_uid</b>（例 04A1B2C3D4E5F6）, name, department, note, active, created_at, updated_at</td></tr>
+      <tr><td><code>items</code></td><td style="white-space:nowrap">備品</td><td>id, <b>tag_uid</b>, name, category, location（保管場所）, note, active, created_at, updated_at</td></tr>
+      <tr><td><code>loans</code></td><td style="white-space:nowrap">貸出の記録</td><td>id, item_id, user_id, device_id, started_at, <b>ended_at</b>（NULL なら貸出中）, end_reason（return / transfer / admin）</td></tr>
+      <tr><td><code>devices</code></td><td style="white-space:nowrap">端末</td><td>id, name, token_hash, last_seen_at</td></tr>
+      <tr><td><code>unknown_tags</code></td><td style="white-space:nowrap">未登録タグ</td><td>uid, device_id, first_seen_at, last_seen_at</td></tr>
+      <tr><td><code>admins</code></td><td style="white-space:nowrap">管理者</td><td>id, username, password_hash</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li><code>tag_uid</code> は users と items をまたいで一意にします（同じタグを両方に登録できないよう、サービス層で確認する）。</li>
+    <li>貸出中かどうかは <code>loans.ended_at IS NULL</code> で判断します。1つの備品に貸出中の行は1つまでです（部分ユニークインデックス）。</li>
+    <li>削除は <code>active=false</code>（論理削除）で行います。履歴は消えません。</li>
+  </ul>
+</section>
+
+<section id="s9">
+  <h2><span class="no">09</span>API</h2>
+  <p>ベースパスは <code>/api/v1</code> です。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>利用者</th><th>メソッド・パス</th><th>内容</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill p-mu">端末トークン</span></td><td><code>POST /scans</code></td><td>UID の種類を問い合わせる → <code>user</code> / <code>item</code> / <code>unknown</code> / <code>captured</code></td></tr>
+      <tr><td><span class="pill p-mu">端末トークン</span></td><td><code>POST /touches</code></td><td>貸出の判定と記録 → <code>checkout</code> / <code>return</code> / <code>transfer</code> / <code>error</code></td></tr>
+      <tr><td><span class="pill p-mu">端末トークン</span></td><td><code>POST /devices/{id}/heartbeat</code></td><td>死活監視（60秒ごと）</td></tr>
+      <tr><td><span class="pill p-ok">誰でも</span></td><td><code>GET /items</code> <code>GET /users</code> <code>GET /loans</code> <code>GET /loans.csv</code></td><td>一覧と検索（状態、期間、ユーザー、備品で絞込み）、CSV 出力</td></tr>
+      <tr><td><span class="pill p-ok">誰でも</span></td><td><code>GET /summary</code></td><td>ダッシュボード用の件数と最近の操作</td></tr>
+      <tr><td><span class="pill p-ok">誰でも</span></td><td><code>WS /ws/events</code></td><td>タッチ・貸出・返却をリアルタイムで通知</td></tr>
+      <tr><td><span class="pill p-ac">管理者</span></td><td><code>POST</code> <code>PATCH</code> <code>/items</code> <code>/users</code></td><td>登録・編集・無効化</td></tr>
+      <tr><td><span class="pill p-ac">管理者</span></td><td><code>POST /registration-sessions</code></td><td>登録モードを開始する（UID を受け取るまで待つ）</td></tr>
+      <tr><td><span class="pill p-ac">管理者</span></td><td><code>POST /loans/{id}/close</code></td><td>管理者による強制返却（<code>end_reason=admin</code>）</td></tr>
+      <tr><td><span class="pill p-ac">管理者</span></td><td><code>GET</code> <code>DELETE /unknown-tags</code></td><td>未登録タグの確認と削除</td></tr>
+      <tr><td><span class="pill p-ac">管理者</span></td><td><code>GET</code> <code>POST</code> <code>DELETE /devices</code></td><td>端末の一覧・追加（トークン発行）・削除</td></tr>
+      <tr><td><span class="pill p-ac">管理者</span></td><td><code>GET /backup</code></td><td>DB のバックアップをダウンロード</td></tr>
+      <tr><td>—</td><td><code>POST /auth/login</code> <code>/auth/logout</code> <code>/auth/password</code>、<code>GET /auth/me</code></td><td>管理者のログイン（セッション Cookie）とパスワード変更</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s10">
+  <h2><span class="no">10</span>Web 画面</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>画面</th><th>誰が使うか</th><th>主な内容</th></tr></thead>
+    <tbody>
+      <tr><td>ダッシュボード</td><td>全員</td><td>貸出中の一覧（誰が・いつから）、在庫数、最近の操作（リアルタイム更新）</td></tr>
+      <tr><td>備品</td><td>全員（編集は管理者）</td><td>一覧・検索、状態バッジ（在庫あり／貸出中／無効）、追加・編集</td></tr>
+      <tr><td>ユーザー</td><td>全員（編集は管理者）</td><td>一覧、そのユーザーが借りている備品、追加・編集</td></tr>
+      <tr><td>貸出履歴</td><td>全員</td><td>期間・ユーザー・備品で絞込み、CSV 出力</td></tr>
+      <tr><td>未登録タグ</td><td>管理者</td><td>読み取られた未登録の UID → ユーザーまたは備品として登録</td></tr>
+      <tr><td>設定</td><td>管理者</td><td>端末の一覧と状態、管理者パスワードの変更、DB のバックアップ</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s11">
+  <h2><span class="no">11</span>移行方針（Phase 1 → Phase 2）</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>手順</th><th>作業</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>管理PCで <code>docker compose -f deploy/management/compose.yaml up -d --build</code> を実行する（同じコード。<code>DATABASE_URL</code> で PostgreSQL にも切り替えられる）</td></tr>
+      <tr><td>2</td><td>UNO Q の <code>data/nfc.db</code> を管理PCの <code>deploy/management/data/</code> にコピーする（SQLite のまま使う場合）</td></tr>
+      <tr><td>3</td><td>管理PCの Web 画面（設定 → 端末を追加）でトークンを発行し、UNO Q の <code>data/app.env</code> に <code>MGMT_URL</code>・<code>DEVICE_ID</code>・<code>DEVICE_TOKEN</code> を書く</td></tr>
+      <tr><td>4</td><td>同じファイルに <code>RUN_MANAGEMENT=false</code> を書いて App を再起動する。nfc-agent は UNO Q に残す（変更なし）</td></tr>
+    </tbody>
+  </table></div>
+  <h3>非機能要件</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>項目</th><th>目標</th></tr></thead>
+    <tbody>
+      <tr><td>応答性</td><td>備品をタッチしてから結果が表示されるまで1秒以内</td></tr>
+      <tr><td>データ保全</td><td>SQLite のバックアップを毎日取得（7世代）</td></tr>
+      <tr><td>セキュリティ</td><td>パスワードはハッシュ化して保存する。端末トークンと管理者パスワードは <code>data/app.env</code>（git 対象外）か自動生成ファイルに置き、ソースや <code>app.yaml</code> には書かない</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s12">
+  <h2><span class="no">12</span>リスクと PoC 計画</h2>
+  <div class="callout"><b>PoC の状況</b>#2 は NG と確認し、対策（nfc-agent の分離）を採用済みです。#1 と #3 は OK です。</div>
+  <div class="tbl"><table>
+    <thead><tr><th>#</th><th>リスク</th><th>結果</th><th>対応</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>UNO Q が USB ホストとして RC-S380 を認識できない</td><td>✅ <b>OK（確認済み）</b></td><td>PD 付き USB-C ハブ経由で <code>054c:06c3</code>（RC-S380/P）として認識され、nfc-agent が nfcpy で開けた。NTAG215 の実タグ3枚で17回タッチし、すべて App まで届いた（2026-09-29）</td></tr>
+      <tr><td>2</td><td>App コンテナから USB デバイスにアクセスできない</td><td>❌ <b>NG（確認済み）</b></td><td>下記のとおり nfc-agent を別コンテナに分離した（<b>採用済み</b>）</td></tr>
+      <tr><td>3</td><td><code>app.yaml</code> の <code>ports</code> で 8000番を公開できない</td><td>✅ <b>OK（確認済み）</b></td><td>実装した App を起動し、<code>0.0.0.0:8000</code> で待ち受けて LAN の IP から Web 画面と API に届くことを確認した</td></tr>
+    </tbody>
+  </table></div>
+  <h3>PoC #2 で分かったこと</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>確認内容</th><th>結果</th></tr></thead>
+    <tbody>
+      <tr><td>App のコンテナ設定</td><td><code>arduino-app-cli</code> が生成する compose の <code>device_cgroup_rules</code> は <b>226・506・81・116 に固定</b>（CLI に組み込み）。<code>app.yaml</code> に追加する項目はない</td></tr>
+      <tr><td>実際にブロックされるか</td><td>App コンテナ内で、グループ権限はあるが許可リスト外の <code>/dev/gpiochip0</code>（major 254）を開く → <b><code>EPERM</code></b>。USB（major 189）も同様にブロックされる</td></tr>
+      <tr><td>別コンテナなら開けるか</td><td><code>--device-cgroup-rule 'c 254:* rmw'</code> を付けた別コンテナでは<b>開ける</b> → nfc-agent に <code>c 189:* rmw</code> を付けて解決</td></tr>
+      <tr><td>nfcpy が動くか</td><td>nfcpy 1.0.4 をインストールできる。ただし App のベースイメージに libusb がないため、nfc-agent は <code>python:3.13-slim</code> + <code>libusb-1.0-0</code> で作る</td></tr>
+      <tr><td>App から nfc-agent に届くか</td><td>App コンテナから <code>http://$HOST_IP:8100/health</code> に届く</td></tr>
+      <tr><td>カーネルとの競合</td><td>RC-S380 を使うカーネルドライバ <code>port100</code> は入っていない（blacklist の設定は不要）</td></tr>
+    </tbody>
+  </table></div>
+</section>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+<script>
+// Render Mermaid ourselves (class "mmd", not "mermaid") so labels are measured
+// only after the Japanese web font has loaded; measuring with the fallback font
+// makes labels overflow and overlap once the web font swaps in.
+(function(){
+  if (typeof mermaid === 'undefined') return;  // raw source stays visible
+  var pres = Array.prototype.slice.call(document.querySelectorAll('pre.mmd'));
+  var items = pres.map(function(pre){ return {pre: pre, src: pre.textContent, out: null}; });
+  var FONT = '"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif';
+  var seq = 0, gen = 0;
+  function v(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function render(){
+    var g = ++gen;
+    var dark = getComputedStyle(document.documentElement).colorScheme === 'dark';
+    // Plain SVG text (htmlLabels:false) so page CSS such as line-height cannot
+    // leak into labels. Wide diagrams (sequence, ER) shrink to the column width.
+    mermaid.initialize({
+      startOnLoad: false, securityLevel: 'strict', theme: 'base', htmlLabels: false,
+      flowchart: {htmlLabels: false, useMaxWidth: true, padding: 12},
+      sequence: {useMaxWidth: true, mirrorActors: false, actorMargin: 60}, er: {useMaxWidth: true},
+      themeVariables: {
+        darkMode: dark, fontFamily: FONT, fontSize: '14px',
+        background: v('--sf'), mainBkg: v('--bg'), primaryColor: v('--bg'),
+        primaryTextColor: v('--ink'), textColor: v('--ink'), titleColor: v('--ink'),
+        lineColor: v('--mu'), primaryBorderColor: v('--ac'), nodeBorder: v('--ac'),
+        clusterBkg: v('--acs'), clusterBorder: v('--ln'), edgeLabelBackground: v('--sf'),
+        actorBkg: v('--acs'), actorBorder: v('--ac'), signalColor: v('--mu'), signalTextColor: v('--ink'),
+        noteBkgColor: v('--wns'), noteBorderColor: v('--wn'), noteTextColor: v('--ink'),
+        actorTextColor: v('--ink'), actorLineColor: v('--ac'), labelTextColor: v('--ink'), loopTextColor: v('--ink'),
+        relationLabelBackground: v('--sf'), relationLabelColor: v('--ink'),
+        labelBackgroundColor: v('--sf'), altBackground: v('--bg'),
+        attributeBackgroundColorOdd: v('--sf'), attributeBackgroundColorEven: v('--bg')
+      }
+    });
+    items.forEach(function(it){
+      // classDef colors in the source are the light theme; swap in the current tokens
+      var src = it.src.replace(/fill:#E0F1F2,stroke:#00818A,color:#15212B/g,
+        'fill:' + v('--acs') + ',stroke:' + v('--ac') + ',color:' + v('--ink'));
+      mermaid.render('mmd-' + (seq++), src).then(function(r){
+        if (g !== gen) return;
+        if (!it.out) {
+          it.out = document.createElement('div');
+          it.out.className = 'mmd-out';
+          it.pre.parentNode.insertBefore(it.out, it.pre);
+        }
+        it.out.innerHTML = r.svg;
+        it.pre.style.display = 'none';
+      }).catch(function(e){ console.error(e); });
+    });
+  }
+  var fontsReady = Promise.all([
+    document.fonts.load('14px "Zen Kaku Gothic New"', 'あ'),
+    document.fonts.load('700 14px "Zen Kaku Gothic New"', 'あ')
+  ]).then(function(){ return document.fonts.ready; }, function(){});
+  fontsReady.then(render);
+  var mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+  if (mq && mq.addEventListener) mq.addEventListener('change', function(){ fontsReady.then(render); });
+  new MutationObserver(function(){ fontsReady.then(render); })
+    .observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
+})();
+</script>
+

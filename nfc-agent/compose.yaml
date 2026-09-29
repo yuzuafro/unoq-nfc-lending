@@ -1,0 +1,16 @@
+# Runs outside arduino-app-cli so it survives App restarts and can be granted USB access.
+#   docker compose -f nfc-agent/compose.yaml up -d --build
+services:
+  nfc-agent:
+    build: .
+    image: nfc-agent:latest
+    restart: unless-stopped
+    ports:
+      - "8100:8100"
+    volumes:
+      - /dev:/dev          # bind /dev (not devices:) so a re-plugged reader is picked up
+    device_cgroup_rules:
+      - "c 189:* rmw"      # usb_device — missing from the App container's rules
+    logging:
+      driver: json-file
+      options: { max-size: 5m, max-file: "2" }

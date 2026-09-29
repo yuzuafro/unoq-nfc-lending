@@ -1,0 +1,16 @@
+# Phase 2: run Management on a PC.
+#   docker compose -f deploy/management/compose.yaml up -d --build
+# Put ADMIN_PASSWORD (and optionally DATABASE_URL) in deploy/management/.env.
+services:
+  management:
+    build:
+      context: ../../python
+      dockerfile: ../deploy/management/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./data:/data   # SQLite DB, daily backups, initial admin password

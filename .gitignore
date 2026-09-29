@@ -1,0 +1,9 @@
+# ignore app cache folder
+.cache/
+
+# runtime data: SQLite DB, backups, device token, app.env (secrets)
+data/
+
+__pycache__/
+deploy/management/data/
+deploy/management/.env

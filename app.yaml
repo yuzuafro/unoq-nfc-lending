@@ -1,0 +1,18 @@
+# app.yaml: The main configuration file for your Arduino App.
+# This file describes the application's metadata and properties.
+
+# The user-visible name of the application.
+name: NFC備品管理
+
+# The icon for the application, can be an emoji or a short string.
+icon: 🏷️
+
+description: NFCタグを「ユーザー → 備品」の順にタッチして貸出・返却を記録し、Web画面で管理する
+
+# A list of network ports that the application exposes.
+# 8000: Management (REST API + Web UI)
+ports: [8000]
+
+# A list of bricks used by this application.
+# None: Management is a plain FastAPI app so it can move to another PC (see docs/design.md).
+bricks: []

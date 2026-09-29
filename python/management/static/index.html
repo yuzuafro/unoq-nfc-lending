@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NFC備品管理</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo" aria-hidden="true">◎</span>NFC備品管理</div>
+  <nav id="nav" aria-label="メニュー">
+    <a href="#/dashboard" data-view="dashboard">ダッシュボード</a>
+    <a href="#/items" data-view="items">備品</a>
+    <a href="#/users" data-view="users">ユーザー</a>
+    <a href="#/loans" data-view="loans">貸出履歴</a>
+    <a href="#/unknown" data-view="unknown" class="admin-only">未登録タグ<span id="unknown-count" class="count" hidden></span></a>
+    <a href="#/settings" data-view="settings" class="admin-only">設定</a>
+  </nav>
+  <div class="account">
+    <span id="live" class="live" title="リアルタイム更新">●</span>
+    <span id="who"></span>
+    <button id="login-btn" class="btn ghost">管理者ログイン</button>
+    <button id="logout-btn" class="btn ghost" hidden>ログアウト</button>
+  </div>
+</header>
+
+<main id="view" tabindex="-1"></main>
+
+<div id="toasts" aria-live="polite"></div>
+
+<dialog id="dialog">
+  <form id="dialog-form" method="dialog">
+    <h2 id="dialog-title"></h2>
+    <div id="dialog-body"></div>
+    <p id="dialog-error" class="error" hidden></p>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" id="dialog-cancel">キャンセル</button>
+      <button type="submit" class="btn primary" id="dialog-ok">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>
