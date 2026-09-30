@@ -49,6 +49,19 @@ arduino-app-cli app logs  ~/ArduinoApps/nfc-sample --follow
 2. 右上の［管理者ログイン］。ユーザー名は `admin`、初期パスワードは `data/admin_initial_password.txt` に保存されている
 3. ［設定］→［パスワードを変更］で変更する
 
+#### パスワードを忘れたとき
+
+ボード上で次のコマンドを実行すると、管理者パスワードをランダムな一時パスワードにリセットします。App の再起動は不要です。
+
+```bash
+docker exec -w /app/python nfc-sample-main-1 /app/.cache/.venv/bin/python -m management reset-password
+```
+
+- 一時パスワードは `data/admin_reset_password.txt` に保存される。ログインして［設定］→［パスワードを変更］で変え、ファイルは削除する
+- リセット前の DB は `data/backups/` に自動でバックアップされる
+- `--password <新しいパスワード>` で直接指定（8文字以上）、`--username <名前>` で対象の管理者を指定できる
+- Phase 2 では `docker compose -f deploy/management/compose.yaml exec management python -m management reset-password`
+
 ### 4. ユーザーと備品を登録する
 
 1. ［ユーザー］または［備品］→［＋ 追加］
@@ -79,7 +92,7 @@ arduino-app-cli は App に環境変数を渡せないため、設定は `data/a
 | `DEVICE_ID` / `DEVICE_TOKEN` | `unoq-1` / 自動発行 | 端末の認証。Phase 1 では `data/device_token` に自動で作られる |
 | `AGENT_URL` | `http://$HOST_IP:8100` | nfc-agent の接続先 |
 
-実行時に `data/` に作られるもの：`nfc.db`（DB）、`backups/`（毎日のバックアップ7世代）、`device_token`、`admin_initial_password.txt`。
+実行時に `data/` に作られるもの：`nfc.db`（DB）、`backups/`（毎日のバックアップ7世代）、`device_token`、`admin_initial_password.txt`、`admin_reset_password.txt`（パスワードリセット時のみ）。
 
 ## Phase 2：管理機能を別PCへ移す
 

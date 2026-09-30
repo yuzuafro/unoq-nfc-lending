@@ -455,3 +455,22 @@ class Service:
             if not a or not verify_password(current, a.password_hash):
                 raise ServiceError("wrong_password", "現在のパスワードが違います", 403)
             a.password_hash = hash_password(new)
+
+    def reset_password(self, new: str, username: str | None = None) -> str:
+        """Set a password without the current one (CLI only). With no username,
+        the sole admin is reset. Returns the username that was reset."""
+        if len(new) < 8:
+            raise ServiceError("weak_password", "パスワードは8文字以上にしてください")
+        with self.session() as s:
+            if username:
+                a = s.scalar(select(Admin).where(Admin.username == username))
+                if not a:
+                    raise ServiceError("not_found", f"管理者 '{username}' はいません", 404)
+            else:
+                admins = s.scalars(select(Admin)).all()
+                if len(admins) != 1:
+                    names = ", ".join(x.username for x in admins) or "なし"
+                    raise ServiceError("ambiguous", f"--username で指定してください（管理者: {names}）")
+                a = admins[0]
+            a.password_hash = hash_password(new)
+            return a.username

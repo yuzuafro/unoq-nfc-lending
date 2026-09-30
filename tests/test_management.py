@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 
 from management.app import create_app
 from management.config import Settings
+from management.service import ServiceError
 
 USER_UID = "04A1B2C3D4E5F6"
 USER2_UID = "04A1B2C3D4E5F7"
@@ -168,6 +169,18 @@ def test_password_change_and_backup(env):
     assert client.post("/api/v1/auth/password", json={"current": "adminpass123", "new": "newpass123"}).status_code == 200
     r = client.get("/api/v1/backup")
     assert r.status_code == 200 and r.content[:15] == b"SQLite format 3"
+
+
+def test_reset_password(env):
+    client, _, app = env
+    service = app.state.service
+    with pytest.raises(ServiceError):
+        service.reset_password("short")
+    with pytest.raises(ServiceError):
+        service.reset_password("resetpass123", "nobody")
+    assert service.reset_password("resetpass123") == "admin"
+    assert client.post("/api/v1/auth/login", json={"username": "admin", "password": "adminpass123"}).status_code == 401
+    assert client.post("/api/v1/auth/login", json={"username": "admin", "password": "resetpass123"}).status_code == 200
 
 
 def test_web_ui_is_served(env):
