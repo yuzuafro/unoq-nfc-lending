@@ -11,7 +11,7 @@
 | 構成要素 | 実体 | 起動するもの | コード |
 |---|---|---|---|
 | **nfc-agent** | Docker コンテナ（`nfc-agent:latest`） | `docker compose -f nfc-agent/compose.yaml up -d`。以後はボード起動時に自動で起動 | [nfc-agent/](../nfc-agent/) |
-| **App** | Docker コンテナ（`nfc-sample-main-1`） | `arduino-app-cli app start`。compose は CLI が `.cache/app-compose.yaml` に生成する | [python/](../python/) |
+| **App** | Docker コンテナ（`unoq-nfc-lending-main-1`） | `arduino-app-cli app start`。compose は CLI が `.cache/app-compose.yaml` に生成する | [python/](../python/) |
 | ├ Edge | App のメインスレッド | `python/main.py` | [python/edge/](../python/edge/) |
 | └ Management | App 内のスレッド（uvicorn） | `python/main.py`（`RUN_MANAGEMENT=false` なら起動しない） | [python/management/](../python/management/) |
 | **sketch** | MCU のファームウェア | `app start` のときにビルドして書き込まれる | [sketch/](../sketch/) |
@@ -113,7 +113,7 @@ docker compose -f nfc-agent/compose.yaml down
 docker run --rm -d --name nfc-fake-agent -p 8100:8100 -v "$PWD/nfc-agent":/agent:ro \
     nfc-agent:latest python3 -u /agent/fake_agent.py
 # App を起動（実行中の別の App は先に止める）
-arduino-app-cli app start ~/ArduinoApps/nfc-sample
+arduino-app-cli app start ~/ArduinoApps/unoq-nfc-lending
 # タッチを再現
 curl -X POST "localhost:8100/inject?uid=04A1B2C3D4E501"
 ```
@@ -145,7 +145,7 @@ docker compose -f deploy/management/compose.yaml logs -f
 |---|---|
 | App コンテナ | イメージ `python-apps-base`。App のフォルダが `/app` にマウントされ、`python/main.py` が実行される。ユーザーは `arduino`（uid 1000） |
 | Python パッケージ | fastapi・uvicorn・httpx はイメージに同梱。`requirements.txt`（sqlalchemy）は初回起動時に `.cache/.venv` へ入る |
-| DB | `/app/data/nfc.db`（ボード上の `~/ArduinoApps/nfc-sample/data/nfc.db`）。App を作り直しても消えない |
+| DB | `/app/data/nfc.db`（ボード上の `~/ArduinoApps/unoq-nfc-lending/data/nfc.db`）。App を作り直しても消えない |
 | Edge → Management | 同じコンテナ内で `http://127.0.0.1:8000` を HTTP で呼ぶ（Phase 2 と同じ経路） |
 | Edge → nfc-agent | `http://$HOST_IP:8100/events`（NDJSON のストリーム） |
 | Edge → sketch | `Bridge.notify("show", パターン番号, 表示ミリ秒)` |
@@ -204,17 +204,17 @@ sequenceDiagram
 
 | 変更したもの | 反映・確認の方法 |
 |---|---|
-| `python/management/*.py`・`python/edge/*.py` | `sh tests/run.sh` → `arduino-app-cli app restart ~/ArduinoApps/nfc-sample` |
+| `python/management/*.py`・`python/edge/*.py` | `sh tests/run.sh` → `arduino-app-cli app restart ~/ArduinoApps/unoq-nfc-lending` |
 | `python/management/static/`（Web UI） | App：ブラウザを再読込するだけ（ファイルを毎回ディスクから読む）。③ の形態では `up -d --build` が必要 |
 | `python/requirements.txt` | `app restart`（差分があれば起動時に入る） |
-| `sketch/*` | `app restart`（ビルドと書き込みも行う）。古いままなら `arduino-app-cli app clean-cache user:nfc-sample --force` |
+| `sketch/*` | `app restart`（ビルドと書き込みも行う）。古いままなら `arduino-app-cli app clean-cache user:unoq-nfc-lending --force` |
 | LED のドット絵 | `docs/src/gen.py` の `PATTERNS` → `cd docs/src && python3 gen.py template.html` → `app restart` |
 | `nfc-agent/agent.py` | `docker compose -f nfc-agent/compose.yaml up -d --build` |
 | `data/app.env` | `app restart` |
 | このガイド | `developer-guide.md` だけ直して `gen.py` を実行（HTML 版 `docs/src/developer-guide.html` は Markdown から生成される） |
 | 設計書 | `design.md` と `docs/src/template.html` の両方を直して `gen.py` を実行 → `docs/src/design.html` が更新される |
 
-ログの見方：Python は `arduino-app-cli app logs ~/ArduinoApps/nfc-sample --follow`、nfc-agent は `docker compose -f nfc-agent/compose.yaml logs -f`。
+ログの見方：Python は `arduino-app-cli app logs ~/ArduinoApps/unoq-nfc-lending --follow`、nfc-agent は `docker compose -f nfc-agent/compose.yaml logs -f`。
 
 ---
 

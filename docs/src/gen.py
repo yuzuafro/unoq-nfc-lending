@@ -1,7 +1,7 @@
 """Generate design diagrams (SVG files for Markdown + inline fragments for HTML)."""
 import hashlib, html, os, re, sys
 
-OUT = os.path.expanduser("~/ArduinoApps/nfc-sample/docs")
+OUT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 os.makedirs(f"{OUT}/images", exist_ok=True)
 
 FONT = "'IBM Plex Sans JP','Noto Sans JP','Hiragino Sans',sans-serif"
@@ -297,7 +297,7 @@ def processes():
     W, H = 960, 410
     b = [f'<rect class="d-bg" x="0" y="0" width="{W}" height="{H}"/>']
     b.append(zone(20, 40, 680, 350, "UNO Q：Linux（MPU）"))
-    b.append(box(36, 76, 464, 298, "App コンテナ（nfc-sample-main-1）", [], cls="d-box2"))
+    b.append(box(36, 76, 464, 298, "App コンテナ（unoq-nfc-lending-main-1）", [], cls="d-box2"))
     b.append(text(48, 118, "python main.py ─ 1 プロセス・複数スレッド", "d-m"))
     rows = (130, 214, 298)
     for y, (t, sub) in zip(rows, [("management", "uvicorn  :8000"), ("スレッドプール", "API の処理"), ("backup", "毎日の DB 保存")]):

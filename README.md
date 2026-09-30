@@ -12,7 +12,7 @@ NFCタグを **「ユーザー → 備品」の順にタッチ**して貸出・�
 | 項目 | 状況 |
 |---|---|
 | 実装 | Management（API・DB・Web UI）、Edge、sketch、nfc-agent、Phase 2 用の構成まで完了 |
-| 確認済み | テスト 21 件、Web UI の表示、sketch のコンパイル。**実機で App を起動**し、8000 番ポートの公開（PoC #3）と、疑似リーダーから送ったタッチでの貸出・切替・返却・エラー・未登録・登録読取・タイムアウトを確認（2026-09-26）。**RC-S380 と NTAG215 の実タグでの読取（PoC #1）**を確認し、PD 付きハブ経由で `054c:06c3` を認識、17 回のタッチを取りこぼしなく処理、未登録・貸出・返却・エラー・タイムアウトも動作（2026-09-29） |
+| 確認済み | テスト 21 件、Web UI の表示、sketch のコンパイル。**実機で App を起動**し、8000 番ポートの公開（PoC #3）と、疑似リーダーから送ったタッチでの貸出・切替・返却・エラー・未登録・登録読取・タイムアウトを確認（2026-09-26）。 **RC-S380 と NTAG215 の実タグでの読取（PoC #1）** を確認し、PD 付きハブ経由で `054c:06c3` を認識、17 回のタッチを取りこぼしなく処理、未登録・貸出・返却・エラー・タイムアウトも動作（2026-09-29） |
 | **未確認** | 実タグでの貸出者の切替と［タグを読み取る］での登録読取（いずれも疑似リーダーでは確認済み）。LED 表示の目視確認 |
 
 ## 構成
@@ -29,7 +29,7 @@ NFCタグを **「ユーザー → 備品」の順にタッチ**して貸出・�
 ### 1. nfc-agent を起動する（初回だけ）
 
 ```bash
-cd ~/ArduinoApps/nfc-sample
+cd ~/ArduinoApps/unoq-nfc-lending
 docker compose -f nfc-agent/compose.yaml up -d --build
 curl localhost:8100/health        # {"reader": true, ...} ならリーダーを認識している
 ```
@@ -39,8 +39,8 @@ curl localhost:8100/health        # {"reader": true, ...} ならリーダーを�
 ### 2. App を起動する
 
 ```bash
-arduino-app-cli app start ~/ArduinoApps/nfc-sample   # ※ 実行中の別の App は止まります
-arduino-app-cli app logs  ~/ArduinoApps/nfc-sample --follow
+arduino-app-cli app start ~/ArduinoApps/unoq-nfc-lending   # ※ 実行中の別の App は止まります
+arduino-app-cli app logs  ~/ArduinoApps/unoq-nfc-lending --follow
 ```
 
 ### 3. Web 画面にログインする
@@ -54,7 +54,7 @@ arduino-app-cli app logs  ~/ArduinoApps/nfc-sample --follow
 ボード上で次のコマンドを実行すると、管理者パスワードをランダムな一時パスワードにリセットします。App の再起動は不要です。
 
 ```bash
-docker exec -w /app/python nfc-sample-main-1 /app/.cache/.venv/bin/python -m management reset-password
+docker exec -w /app/python unoq-nfc-lending-main-1 /app/.cache/.venv/bin/python -m management reset-password
 ```
 
 - 一時パスワードは `data/admin_reset_password.txt` に保存される。ログインして［設定］→［パスワードを変更］で変え、ファイルは削除する
@@ -116,7 +116,7 @@ DEVICE_TOKEN=<発行されたトークン>
 | 作業 | 方法 |
 |---|---|
 | テスト | `sh tests/run.sh`（App のベースイメージで一時コンテナを作って実行。起動中の App には影響しない） |
-| sketch のコンパイル確認 | App の起動時に自動でビルドされる。キャッシュが古いときは `arduino-app-cli app clean-cache user:nfc-sample --force` |
+| sketch のコンパイル確認 | App の起動時に自動でビルドされる。キャッシュが古いときは `arduino-app-cli app clean-cache user:unoq-nfc-lending --force` |
 | LED のドット絵を変える | `docs/src/gen.py` の `PATTERNS` を編集 → `cd docs/src && python3 gen.py template.html`（設計書の図と `sketch/patterns.h` が両方更新される） |
 | 設計書を直す | `docs/design.md` と `docs/src/template.html` の両方を直し、上と同じく `gen.py` を実行 → `docs/src/design.html` が更新される |
 | 開発者ガイドを直す | `docs/developer-guide.md` だけ直して `gen.py` を実行（HTML 版は自動生成） |

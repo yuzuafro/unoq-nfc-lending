@@ -107,7 +107,7 @@ flowchart TB
 **フォルダ構成**
 
 ```text
-nfc-sample/
+unoq-nfc-lending/
 ├── app.yaml               # ports: [8000]、Brick なし
 ├── python/
 │   ├── main.py            # Management をスレッドで起動し、Edge のループを回す
