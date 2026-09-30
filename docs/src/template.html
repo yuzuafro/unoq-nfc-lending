@@ -360,12 +360,14 @@ erDiagram
       <tr><td><code>devices</code></td><td style="white-space:nowrap">端末</td><td>id, name, token_hash, last_seen_at</td></tr>
       <tr><td><code>unknown_tags</code></td><td style="white-space:nowrap">未登録タグ</td><td>uid, device_id, first_seen_at, last_seen_at</td></tr>
       <tr><td><code>admins</code></td><td style="white-space:nowrap">管理者</td><td>id, username, password_hash</td></tr>
+      <tr><td><code>app_settings</code></td><td style="white-space:nowrap">Web 画面から変える設定</td><td>key, value（JSON）。<code>fields</code> に項目名の設定を保存する</td></tr>
     </tbody>
   </table></div>
   <ul>
     <li><code>tag_uid</code> は users と items をまたいで一意にします（同じタグを両方に登録できないよう、サービス層で確認する）。</li>
     <li>貸出中かどうかは <code>loans.ended_at IS NULL</code> で判断します。1つの備品に貸出中の行は1つまでです（部分ユニークインデックス）。</li>
     <li>削除は <code>active=false</code>（論理削除）で行います。履歴は消えません。</li>
+    <li>department・team・asset_no・category・location の<b>画面上の項目名</b>は現場ごとに変えられます（例：部署 → 課、チーム → 社員種別）。無効にした項目は画面に表示しません。変わるのは表示と CSV の見出しだけで、列名と保存済みの値はそのままです。</li>
   </ul>
 </section>
 
@@ -379,6 +381,7 @@ erDiagram
       <tr><td><span class="pill p-mu">端末トークン</span></td><td><code>POST /touches</code></td><td>貸出の判定と記録 → <code>checkout</code> / <code>return</code> / <code>transfer</code> / <code>error</code></td></tr>
       <tr><td><span class="pill p-mu">端末トークン</span></td><td><code>POST /devices/{id}/heartbeat</code></td><td>死活監視（60秒ごと）</td></tr>
       <tr><td><span class="pill p-ok">誰でも</span></td><td><code>GET /items</code> <code>GET /users</code> <code>GET /loans</code> <code>GET /loans.csv</code></td><td>一覧と検索（状態、期間、ユーザー、備品で絞込み）、CSV 出力</td></tr>
+      <tr><td><span class="pill p-ok">誰でも</span></td><td><code>GET /fields</code></td><td>項目名の設定（ユーザー・備品の各項目の名前と、有効かどうか）</td></tr>
       <tr><td><span class="pill p-ok">誰でも</span></td><td><code>GET /summary</code></td><td>ダッシュボード用の件数と最近の操作</td></tr>
       <tr><td><span class="pill p-ok">誰でも</span></td><td><code>WS /ws/events</code></td><td>タッチ・貸出・返却をリアルタイムで通知</td></tr>
       <tr><td><span class="pill p-ac">管理者</span></td><td><code>POST</code> <code>PATCH</code> <code>/items</code> <code>/users</code></td><td>登録・編集・無効化</td></tr>
@@ -386,6 +389,7 @@ erDiagram
       <tr><td><span class="pill p-ac">管理者</span></td><td><code>POST /loans/{id}/close</code></td><td>管理者による強制返却（<code>end_reason=admin</code>）</td></tr>
       <tr><td><span class="pill p-ac">管理者</span></td><td><code>GET</code> <code>DELETE /unknown-tags</code></td><td>未登録タグの確認と削除</td></tr>
       <tr><td><span class="pill p-ac">管理者</span></td><td><code>GET</code> <code>POST</code> <code>DELETE /devices</code></td><td>端末の一覧・追加（トークン発行）・削除</td></tr>
+      <tr><td><span class="pill p-ac">管理者</span></td><td><code>PATCH /fields</code></td><td>項目名の変更・項目の有効／無効</td></tr>
       <tr><td><span class="pill p-ac">管理者</span></td><td><code>GET /backup</code></td><td>DB のバックアップをダウンロード</td></tr>
       <tr><td>—</td><td><code>POST /auth/login</code> <code>/auth/logout</code> <code>/auth/password</code>、<code>GET /auth/me</code></td><td>管理者のログイン（セッション Cookie）とパスワード変更</td></tr>
     </tbody>
@@ -402,7 +406,7 @@ erDiagram
       <tr><td>ユーザー</td><td>全員（編集は管理者）</td><td>一覧、そのユーザーが借りている備品、追加・編集</td></tr>
       <tr><td>貸出履歴</td><td>全員</td><td>期間・ユーザー・備品で絞込み、CSV 出力</td></tr>
       <tr><td>未登録タグ</td><td>管理者</td><td>読み取られた未登録の UID → ユーザーまたは備品として登録</td></tr>
-      <tr><td>設定</td><td>管理者</td><td>端末の一覧と状態、管理者パスワードの変更、DB のバックアップ</td></tr>
+      <tr><td>設定</td><td>管理者</td><td>端末の一覧と状態、項目名の変更、管理者パスワードの変更、DB のバックアップ</td></tr>
     </tbody>
   </table></div>
 </section>

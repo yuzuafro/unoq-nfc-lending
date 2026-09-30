@@ -21,7 +21,31 @@ function meta(...parts) {
   const html = parts.filter(Boolean).join('<span class="sep">·</span>');
   return html ? `<div class="sub">${html}</div>` : "";
 }
-function assetNo(no) { return no ? `<span class="uid">${esc(no)}</span>` : ""; }
+function assetNo(no) { return no && on("items", "asset_no") ? `<span class="uid">${esc(no)}</span>` : ""; }
+
+// Site-customizable attribute fields (設定 → 項目名): label and whether the field is used.
+const FIELD_KEYS = { users: ["department", "team"], items: ["asset_no", "category", "location"] };
+const FIELD_DEFAULTS = { department: "部署", team: "チーム", asset_no: "管理番号", category: "カテゴリ", location: "保管場所" };
+state.fields = Object.fromEntries(Object.entries(FIELD_KEYS).map(([kind, keys]) =>
+  [kind, Object.fromEntries(keys.map(k => [k, { label: FIELD_DEFAULTS[k], enabled: true }]))]));  // until loaded
+async function loadFields() { state.fields = await api("/fields"); }
+function label(kind, key) { return state.fields[kind][key].label; }
+function on(kind, key) { return state.fields[kind][key].enabled; }
+// `text` only when the field is in use (for meta() lines and table cells).
+function ifOn(kind, key, text) { return on(kind, key) ? text : ""; }
+function th(kind, key) { return ifOn(kind, key, `<th>${esc(label(kind, key))}</th>`); }
+function td(kind, key, value) { return ifOn(kind, key, `<td>${esc(value)}</td>`); }
+// Form inputs for the fields in use; `extra` adds attributes per key (maxlength, placeholder).
+function fieldInputs(kind, obj, extra = {}) {
+  return FIELD_KEYS[kind].filter(k => on(kind, k)).map(k => `<label class="field"><span>${esc(label(kind, k))}</span>
+    <input name="${k}" value="${esc(obj[k])}" ${extra[k] || ""}></label>`).join("");
+}
+function fieldValues(kind, f) {
+  return Object.fromEntries(FIELD_KEYS[kind].filter(k => on(kind, k)).map(k => [k, f.get(k)]));
+}
+function searchHint(kind) {
+  return ["名前", ...FIELD_KEYS[kind].filter(k => on(kind, k)).map(k => label(kind, k))].join("・") + "で検索";
+}
 function since(iso) {
   // clamp: a browser clock slightly behind the board would otherwise show "-1分" right after checkout
   const min = Math.max(0, Math.floor((Date.now() - new Date(iso)) / 60000));
@@ -186,13 +210,11 @@ function userForm(u = {}) {
     title: isNew ? "ユーザーを追加" : "ユーザーを編集",
     body: `${tagField(u.tag_uid)}
       <label class="field"><span>名前</span><input name="name" value="${esc(u.name)}" required maxlength="100"></label>
-      <label class="field"><span>部署</span><input name="department" value="${esc(u.department)}"></label>
-      <label class="field"><span>チーム</span><input name="team" value="${esc(u.team)}"></label>
+      ${fieldInputs("users", u)}
       <label class="field"><span>メモ</span><textarea name="note" rows="2">${esc(u.note)}</textarea></label>
       ${isNew ? "" : `<label class="check"><input type="checkbox" name="active" ${u.active ? "checked" : ""}> 有効（外すと貸出できなくなります）</label>`}`,
     onSubmit: async (f) => {
-      const body = { tag_uid: f.get("tag_uid"), name: f.get("name"), department: f.get("department"),
-                     team: f.get("team"), note: f.get("note") };
+      const body = { tag_uid: f.get("tag_uid"), name: f.get("name"), ...fieldValues("users", f), note: f.get("note") };
       if (!isNew) body.active = f.get("active") === "on";
       await api(isNew ? "/users" : `/users/${u.id}`, { method: isNew ? "POST" : "PATCH", body });
       toast(isNew ? "ユーザーを追加しました" : "ユーザーを更新しました");
@@ -209,15 +231,11 @@ function itemForm(i = {}) {
     title: isNew ? "備品を追加" : "備品を編集",
     body: `${tagField(i.tag_uid)}
       <label class="field"><span>名前</span><input name="name" value="${esc(i.name)}" required maxlength="100"></label>
-      <label class="field"><span>管理番号</span><input name="asset_no" value="${esc(i.asset_no)}" maxlength="64" placeholder="例 PC-0001"></label>
-      <label class="field"><span>カテゴリ</span><input name="category" value="${esc(i.category)}" placeholder="例 PC、工具"></label>
-      <label class="field"><span>保管場所</span><input name="location" value="${esc(i.location)}"></label>
+      ${fieldInputs("items", i, { asset_no: 'maxlength="64"' })}
       <label class="field"><span>メモ</span><textarea name="note" rows="2">${esc(i.note)}</textarea></label>
       ${isNew ? "" : `<label class="check"><input type="checkbox" name="active" ${i.active ? "checked" : ""}> 有効（外すと貸出できなくなります）</label>`}`,
     onSubmit: async (f) => {
-      const body = { tag_uid: f.get("tag_uid"), name: f.get("name"), asset_no: f.get("asset_no"),
-                     category: f.get("category"),
-                     location: f.get("location"), note: f.get("note") };
+      const body = { tag_uid: f.get("tag_uid"), name: f.get("name"), ...fieldValues("items", f), note: f.get("note") };
       if (!isNew) body.active = f.get("active") === "on";
       await api(isNew ? "/items" : `/items/${i.id}`, { method: isNew ? "POST" : "PATCH", body });
       toast(isNew ? "備品を追加しました" : "備品を更新しました");
@@ -255,15 +273,15 @@ const views = {
           ${items.length ? `<div class="table-wrap"><table class="loans">
             <thead><tr><th>備品</th><th>借りている人</th><th class="num">経過</th></tr></thead>
             <tbody>${items.map(i => `<tr>
-              <td>${esc(i.name)}${meta(assetNo(i.asset_no), esc(i.location))}</td>
-              <td>${esc(i.loan.user_name)}${meta(esc(i.loan.user_team))}</td>
+              <td>${esc(i.name)}${meta(assetNo(i.asset_no), ifOn("items", "location", esc(i.location)))}</td>
+              <td>${esc(i.loan.user_name)}${meta(ifOn("users", "team", esc(i.loan.user_team)))}</td>
               <td class="num">${since(i.loan.started_at)}${meta(`${when(i.loan.started_at)}〜`)}</td></tr>`).join("")}</tbody></table></div>`
             : `<div class="empty">貸出中の備品はありません</div>`}
         </section>
         <section class="panel"><h2>最近の操作</h2>
           ${s.recent.length ? `<ul class="feed">${s.recent.slice(0, 10).map(e => `<li><time>${when(e.at)}</time>
             ${e.type === "checkout" ? '<span class="badge b-ac">貸出</span>' : '<span class="badge b-ok">返却</span>'}
-            <div class="what">${esc(e.item_name)}${meta(esc(e.user_name), esc(e.user_team), e.by_admin && "管理者が操作")}</div>
+            <div class="what">${esc(e.item_name)}${meta(esc(e.user_name), ifOn("users", "team", esc(e.user_team)), e.by_admin && "管理者が操作")}</div>
             ${assetNo(e.item_asset_no)}</li>`).join("")}</ul>`
             : `<div class="empty">まだ操作はありません</div>`}
         </section>
@@ -277,16 +295,16 @@ const views = {
     return `
       <div class="head"><h1>備品</h1><button class="btn primary admin-only" id="add-item">＋ 備品を追加</button></div>
       <div class="toolbar">
-        <input type="search" id="item-q" placeholder="名前・管理番号・カテゴリ・保管場所で検索" value="${esc(state.itemQuery)}">
+        <input type="search" id="item-q" placeholder="${esc(searchHint("items"))}" value="${esc(state.itemQuery)}">
         <div class="chips">${chip("", "すべて")}${chip("available", "在庫あり")}${chip("on_loan", "貸出中")}${chip("inactive", "無効")}</div>
       </div>
       <section class="panel">
         ${items.length ? `<div class="table-wrap"><table>
-          <thead><tr><th>状態</th><th>備品</th><th>管理番号</th><th>カテゴリ</th><th>保管場所</th><th>借りている人</th><th class="admin-only"></th></tr></thead>
+          <thead><tr><th>状態</th><th>備品</th>${FIELD_KEYS.items.map(k => th("items", k)).join("")}<th>借りている人</th><th class="admin-only"></th></tr></thead>
           <tbody>${items.map(i => `<tr>
             <td>${badge(i.status)}</td>
             <td>${esc(i.name)}<div class="sub uid">${esc(i.tag_uid)}</div></td>
-            <td>${esc(i.asset_no)}</td><td>${esc(i.category)}</td><td>${esc(i.location)}</td>
+            ${FIELD_KEYS.items.map(k => td("items", k, i[k])).join("")}
             <td>${i.loan ? `${esc(i.loan.user_name)}<div class="sub">${when(i.loan.started_at)} から</div>` : ""}</td>
             <td class="actions admin-only">
               ${i.loan ? `<button class="btn small" data-close="${i.loan.loan_id}" data-label="${esc(i.name)}">返却にする</button>` : ""}
@@ -299,13 +317,13 @@ const views = {
     const users = await api(`/users?${new URLSearchParams({ q: state.userQuery })}`);
     return `
       <div class="head"><h1>ユーザー</h1><button class="btn primary admin-only" id="add-user">＋ ユーザーを追加</button></div>
-      <div class="toolbar"><input type="search" id="user-q" placeholder="名前・部署・チームで検索" value="${esc(state.userQuery)}"></div>
+      <div class="toolbar"><input type="search" id="user-q" placeholder="${esc(searchHint("users"))}" value="${esc(state.userQuery)}"></div>
       <section class="panel">
         ${users.length ? `<div class="table-wrap"><table>
-          <thead><tr><th>名前</th><th>部署</th><th>チーム</th><th>借りている備品</th><th>状態</th><th class="admin-only"></th></tr></thead>
+          <thead><tr><th>名前</th>${FIELD_KEYS.users.map(k => th("users", k)).join("")}<th>借りている備品</th><th>状態</th><th class="admin-only"></th></tr></thead>
           <tbody>${users.map(u => `<tr>
             <td>${esc(u.name)}<div class="sub uid">${esc(u.tag_uid)}</div></td>
-            <td>${esc(u.department)}</td><td>${esc(u.team)}</td>
+            ${FIELD_KEYS.users.map(k => td("users", k, u[k])).join("")}
             <td>${u.loans.length ? u.loans.map(l => `${esc(l.item_name)} <span class="sub">${when(l.started_at)}〜</span>`).join("<br>") : '<span class="sub">なし</span>'}</td>
             <td>${u.active ? '<span class="badge b-ok">有効</span>' : '<span class="badge b-mu">無効</span>'}</td>
             <td class="actions admin-only"><button class="btn small" data-edit-user="${u.id}">編集</button></td></tr>`).join("")}</tbody></table></div>`
@@ -334,7 +352,7 @@ const views = {
           <thead><tr><th>備品</th><th>ユーザー</th><th>貸出</th><th>返却</th><th>理由</th><th class="admin-only"></th></tr></thead>
           <tbody>${data.loans.map(l => `<tr>
             <td>${esc(l.item_name)}${meta(assetNo(l.item_asset_no))}</td>
-            <td>${esc(l.user_name)}${meta(esc(l.user_team))}</td>
+            <td>${esc(l.user_name)}${meta(ifOn("users", "team", esc(l.user_team)))}</td>
             <td>${when(l.started_at, true)}</td>
             <td>${l.ended_at ? when(l.ended_at, true) : '<span class="badge b-ac">貸出中</span>'}</td>
             <td>${esc(REASON[l.end_reason] || "")}</td>
@@ -380,6 +398,16 @@ const views = {
           }).join("")}</tbody></table></div>
         <div style="padding:12px 16px"><button class="btn" id="add-device">＋ 端末を追加</button></div>
       </section>
+      <section class="panel"><h2>項目名</h2>
+        <p class="hint" style="padding:12px 16px 0">ユーザーと備品の項目名を、運用に合わせて変えられます（例：部署 → 課、チーム → 社員種別）。
+          「有効」のチェックを外した項目は、一覧や入力画面に表示されなくなります（入力済みの値は消えません）。</p>
+        <div style="padding:12px 16px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="edit-fields">項目名を変更</button></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>対象</th><th>項目</th><th>項目名</th><th>有効</th></tr></thead>
+          <tbody>${Object.entries(FIELD_KEYS).flatMap(([kind, keys]) => keys.map((k, n) => `<tr>
+            <td>${kind === "users" ? "ユーザー" : "備品"}</td><td>項目${n + 1}</td><td>${esc(label(kind, k))}</td>
+            <td>${on(kind, k) ? '<span class="badge b-ok">有効</span>' : '<span class="badge b-mu">無効</span>'}</td></tr>`)).join("")}</tbody></table></div>
+      </section>
       <section class="panel"><h2>管理者</h2>
         <div style="padding:14px 16px;display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn" id="change-pw">パスワードを変更</button>
@@ -413,6 +441,7 @@ view.addEventListener("click", async (e) => {
       }
     }
     else if (t.id === "change-pw") passwordForm();
+    else if (t.id === "edit-fields") fieldsForm();
   } catch (err) { toast(err.message); }
 });
 
@@ -453,6 +482,27 @@ function deviceForm(existingId) {
       });
       render();
       return true;  // the token dialog replaced this one
+    },
+  });
+}
+
+function fieldsForm() {
+  const rows = (kind) => FIELD_KEYS[kind].map((k, n) => `<div class="field"><span>項目${n + 1}</span>
+    <div class="row"><input name="${kind}.${k}" value="${esc(label(kind, k))}" maxlength="20" placeholder="${esc(FIELD_DEFAULTS[k])}">
+    <label class="check"><input type="checkbox" name="${kind}.${k}.enabled" ${on(kind, k) ? "checked" : ""}> 有効</label></div></div>`).join("");
+  openDialog({
+    title: "項目名を変更",
+    body: `<h3>ユーザー</h3>${rows("users")}<h3>備品</h3>${rows("items")}
+           <p class="hint">空欄にすると初期値（入力欄に薄く表示されている名前）に戻ります。</p>`,
+    onSubmit: async (f) => {
+      const body = {};
+      for (const [kind, keys] of Object.entries(FIELD_KEYS)) {
+        body[kind] = Object.fromEntries(keys.map(k => [k, { label: f.get(`${kind}.${k}`),
+                                                             enabled: f.get(`${kind}.${k}.enabled`) === "on" }]));
+      }
+      state.fields = await api("/fields", { method: "PATCH", body });
+      toast("項目名を変更しました");
+      render();
     },
   });
 }
@@ -512,12 +562,14 @@ function connectLive() {
   ws.onmessage = (m) => {
     const e = JSON.parse(m.data);
     if (e.type === "ping" || e.type === "captured") return;
+    if (e.type === "fields_changed") { loadFields().then(() => { if (!dlg.open) render(); }).catch(() => {}); return; }
     if (MESSAGES[e.type]) toast(MESSAGES[e.type](e));
     if (!dlg.open) render();
   };
 }
 
 (async () => {
+  try { await loadFields(); } catch (err) { toast(err.message); }
   try { setAdmin((await api("/auth/me")).username); } catch { setAdmin(null); }
   connectLive();
 })();

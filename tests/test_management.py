@@ -127,6 +127,37 @@ def test_asset_no_and_team(env):
     assert "PC-0001" in client.get("/api/v1/loans.csv").text
 
 
+def test_custom_field_labels(env):
+    client, dev, _ = env
+    fields = client.get("/api/v1/fields").json()
+    assert fields["users"]["department"] == {"label": "部署", "enabled": True}
+    assert fields["items"]["asset_no"]["label"] == "管理番号"
+    change = {"users": {"department": {"label": " 課 "}, "team": {"label": "社員種別"}},
+              "items": {"category": {"enabled": False}}}
+    assert client.patch("/api/v1/fields", json=change).status_code == 401  # admin only
+    u1, _, it = seed(client)
+    fields = client.patch("/api/v1/fields", json=change).json()
+    assert fields["users"]["department"]["label"] == "課" and fields["users"]["team"]["label"] == "社員種別"
+    assert fields["items"]["category"] == {"label": "カテゴリ", "enabled": False}
+    assert client.get("/api/v1/fields").json() == fields  # persisted; public read
+    # A blank label goes back to the default; unknown fields and long labels are rejected.
+    fields = client.patch("/api/v1/fields", json={"users": {"department": {"label": ""}}}).json()
+    assert fields["users"]["department"]["label"] == "部署"
+    assert client.patch("/api/v1/fields", json={"users": {"name": {"label": "氏名"}}}).status_code == 400
+    assert client.patch("/api/v1/fields", json={"items": {"location": {"label": "x" * 21}}}).status_code == 400
+    # Labels flow into messages and the CSV header; unused fields drop out of the CSV.
+    client.patch("/api/v1/fields", json={"items": {"asset_no": {"label": "資産番号"}}})
+    client.patch(f"/api/v1/items/{it['id']}", json={"asset_no": "A-1"})
+    r = client.post("/api/v1/items", json={"tag_uid": "04112233445567", "name": "dup", "asset_no": "A-1"})
+    assert "資産番号" in r.json()["detail"]["message"]
+    touch(client, dev, USER_UID)
+    header = client.get("/api/v1/loans.csv").text.lstrip("\ufeff").splitlines()[0]
+    assert header.split(",")[:5] == ["貸出ID", "備品", "資産番号", "ユーザー", "社員種別"]
+    client.patch("/api/v1/fields", json={"users": {"team": {"enabled": False}}})
+    header = client.get("/api/v1/loans.csv").text.lstrip("\ufeff").splitlines()[0]
+    assert "社員種別" not in header and header.split(",")[3:5] == ["ユーザー", "端末"]
+
+
 def test_old_database_gets_new_columns(tmp_path):
     import sqlite3
     from management.db import make_engine, make_session_factory

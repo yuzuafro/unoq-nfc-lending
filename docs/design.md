@@ -253,10 +253,12 @@ erDiagram
 | `devices` | 端末 | id, name, token_hash, last_seen_at |
 | `unknown_tags` | 未登録タグ | uid, device_id, first_seen_at, last_seen_at |
 | `admins` | 管理者 | id, username, password_hash |
+| `app_settings` | Web 画面から変える設定 | key, value（JSON）。`fields` に項目名の設定を保存する |
 
 - `tag_uid` は users と items をまたいで一意にします（同じタグを両方に登録できないよう、サービス層で確認する）。
 - 貸出中かどうかは `loans.ended_at IS NULL` で判断します。1つの備品に貸出中の行は1つまでです（部分ユニークインデックス）。
 - 削除は `active=false`（論理削除）で行います。履歴は消えません。
+- department・team・asset_no・category・location の**画面上の項目名**は現場ごとに変えられます（例：部署 → 課、チーム → 社員種別）。無効にした項目は画面に表示しません。変わるのは表示と CSV の見出しだけで、列名と保存済みの値はそのままです。
 
 ---
 
@@ -270,6 +272,7 @@ erDiagram
 | 端末（トークン） | `POST /touches` | 貸出の判定と記録 → `checkout` / `return` / `transfer` / `error` |
 | 端末（トークン） | `POST /devices/{id}/heartbeat` | 死活監視（60秒ごと） |
 | 誰でも | `GET /items`・`GET /users`・`GET /loans`・`GET /loans.csv` | 一覧と検索（状態、期間、ユーザー、備品で絞込み）、CSV 出力 |
+| 誰でも | `GET /fields` | 項目名の設定（ユーザー・備品の各項目の名前と、有効かどうか） |
 | 誰でも | `GET /summary` | ダッシュボード用の件数と最近の操作 |
 | 誰でも | `WS /ws/events` | タッチ・貸出・返却をリアルタイムで通知 |
 | 管理者（ログイン） | `POST`・`PATCH /items`、`/users` | 登録・編集・無効化 |
@@ -277,6 +280,7 @@ erDiagram
 | 管理者（ログイン） | `POST /loans/{id}/close` | 管理者による強制返却（`end_reason=admin`） |
 | 管理者（ログイン） | `GET`・`DELETE /unknown-tags` | 未登録タグの確認と削除 |
 | 管理者（ログイン） | `GET`・`POST`・`DELETE /devices` | 端末の一覧・追加（トークン発行）・削除 |
+| 管理者（ログイン） | `PATCH /fields` | 項目名の変更・項目の有効／無効 |
 | 管理者（ログイン） | `GET /backup` | DB のバックアップをダウンロード |
 | — | `POST /auth/login`・`/auth/logout`・`/auth/password`、`GET /auth/me` | 管理者のログイン（セッションCookie）とパスワード変更 |
 
@@ -291,7 +295,7 @@ erDiagram
 | ユーザー | 全員（編集は管理者） | 一覧、そのユーザーが借りている備品、追加・編集 |
 | 貸出履歴 | 全員 | 期間・ユーザー・備品で絞込み、CSV出力 |
 | 未登録タグ | 管理者 | 読み取られた未登録のUID → ユーザーまたは備品として登録 |
-| 設定 | 管理者 | 端末の一覧と状態、管理者パスワードの変更、DBのバックアップ |
+| 設定 | 管理者 | 端末の一覧と状態、項目名の変更、管理者パスワードの変更、DBのバックアップ |
 
 ---
 

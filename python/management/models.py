@@ -77,6 +77,13 @@ class UnknownTag(Base):
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class AppSetting(Base):
+    """Small key/value store for settings changed from the Web UI (value is JSON)."""
+    __tablename__ = "app_settings"
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, default="")
+
+
 class Admin(Base):
     __tablename__ = "admins"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

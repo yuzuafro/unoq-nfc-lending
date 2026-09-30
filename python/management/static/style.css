@@ -109,7 +109,9 @@ dialog form { padding: 20px 22px; display: grid; gap: 14px; }
 .field { display: grid; gap: 4px; }
 .field > span { font-size: 13px; color: var(--mu); font-weight: 600; }
 .field .row { display: flex; gap: 8px; }
-.field .row input { flex: 1; }
+.field .row > input { flex: 1; }
+.field .check input { width: auto; }
+dialog h3 { margin: 4px 0 -4px; font-size: 14px; }
 .field input, .field textarea, .field select { width: 100%; }
 .check { display: flex; gap: 8px; align-items: center; }
 .hint { font-size: 13px; color: var(--mu); margin: 0; }

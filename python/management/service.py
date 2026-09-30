@@ -1,6 +1,7 @@
 """Business rules. All DB writes go through here so terminals share one set of rules."""
 import csv
 import io
+import json
 import re
 import threading
 import time
@@ -13,10 +14,18 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from .events import EventHub
-from .models import Admin, Device, Item, Loan, UnknownTag, User, utcnow
+from .models import Admin, AppSetting, Device, Item, Loan, UnknownTag, User, utcnow
 from .security import hash_password, hash_token, new_token, verify_password
 
 UID_RE = re.compile(r"^[0-9A-F]{8,20}$")
+
+# Optional attribute fields whose label (and whether they are used at all) each site
+# can change from 設定, e.g. 部署 → 課, チーム → 社員種別. Column names stay the same.
+FIELD_DEFAULTS = {
+    "users": {"department": "部署", "team": "チーム"},
+    "items": {"asset_no": "管理番号", "category": "カテゴリ", "location": "保管場所"},
+}
+FIELD_LABEL_MAX = 20
 
 
 class ServiceError(Exception):
@@ -196,6 +205,37 @@ class Service:
                          previous_user=previous_user)
         return result
 
+    # ------------------------------------------------------------------ field labels
+    def get_fields(self) -> dict:
+        """{"users": {"department": {"label": "部署", "enabled": True}, ...}, "items": {...}}"""
+        with self.session() as s:
+            row = s.get(AppSetting, "fields")
+            saved = json.loads(row.value) if row and row.value else {}
+        return {kind: {key: {"label": default, "enabled": True, **saved.get(kind, {}).get(key, {})}
+                       for key, default in defaults.items()}
+                for kind, defaults in FIELD_DEFAULTS.items()}
+
+    def set_fields(self, data: dict) -> dict:
+        """Merge label / enabled changes. Unknown fields are rejected; a blank label means the default."""
+        fields = self.get_fields()
+        for kind, entries in data.items():
+            for key, change in (entries or {}).items():
+                if key not in FIELD_DEFAULTS.get(kind, {}):
+                    raise ServiceError("unknown_field", f"項目 {kind}.{key} は変更できません")
+                if change.get("label") is not None:
+                    label = change["label"].strip() or FIELD_DEFAULTS[kind][key]
+                    if len(label) > FIELD_LABEL_MAX:
+                        raise ServiceError("label_too_long", f"項目名は{FIELD_LABEL_MAX}文字以内にしてください")
+                    fields[kind][key]["label"] = label
+                if change.get("enabled") is not None:
+                    fields[kind][key]["enabled"] = bool(change["enabled"])
+        with self.session() as s:
+            row = s.get(AppSetting, "fields") or AppSetting(key="fields")
+            row.value = json.dumps(fields, ensure_ascii=False)
+            s.add(row)
+        self.hub.publish("fields_changed")
+        return fields
+
     # ------------------------------------------------------------------ devices
     def authenticate_device(self, device_id: str, token: str) -> bool:
         with self.session() as s:
@@ -344,13 +384,13 @@ class Service:
         self.hub.publish("item_changed", id=item_id)
         return out
 
-    @staticmethod
-    def _check_asset_no_free(s: Session, asset_no: str, own_id: int | None = None) -> None:
+    def _check_asset_no_free(self, s: Session, asset_no: str, own_id: int | None = None) -> None:
         if not asset_no:  # blank is allowed for any number of items
             return
         found = s.scalar(select(Item).where(Item.asset_no == asset_no))
         if found and found.id != own_id:
-            raise ServiceError("asset_no_in_use", f"この管理番号は備品「{found.name}」に登録済みです", 409)
+            label = self.get_fields()["items"]["asset_no"]["label"]
+            raise ServiceError("asset_no_in_use", f"この{label}は備品「{found.name}」に登録済みです", 409)
 
     @staticmethod
     def _forget_unknown(s: Session, uid: str) -> None:
@@ -382,12 +422,22 @@ class Service:
 
     def loans_csv(self, **filters) -> str:
         data = self.list_loans(limit=100000, **filters)["loans"]
+        fields = self.get_fields()
+        asset_no, team = fields["items"]["asset_no"], fields["users"]["team"]
+        # (header, value) pairs; the customizable ones follow the site's labels and are left out when unused.
+        cols = [("貸出ID", lambda l: l["id"]), ("備品", lambda l: l["item_name"])]
+        if asset_no["enabled"]:
+            cols.append((asset_no["label"], lambda l: l["item_asset_no"]))
+        cols.append(("ユーザー", lambda l: l["user_name"]))
+        if team["enabled"]:
+            cols.append((team["label"], lambda l: l["user_team"]))
+        cols += [("端末", lambda l: l["device_id"] or ""), ("開始(UTC)", lambda l: l["started_at"]),
+                 ("終了(UTC)", lambda l: l["ended_at"] or ""), ("終了理由", lambda l: l["end_reason"] or "")]
         buf = io.StringIO()
         w = csv.writer(buf)
-        w.writerow(["貸出ID", "備品", "管理番号", "ユーザー", "チーム", "端末", "開始(UTC)", "終了(UTC)", "終了理由"])
+        w.writerow([h for h, _ in cols])
         for l in data:
-            w.writerow([l["id"], l["item_name"], l["item_asset_no"], l["user_name"], l["user_team"], l["device_id"] or "",
-                        l["started_at"], l["ended_at"] or "", l["end_reason"] or ""])
+            w.writerow([get(l) for _, get in cols])
         return "\ufeff" + buf.getvalue()  # BOM so Excel opens it as UTF-8
 
     def close_loan(self, loan_id: int) -> dict:

@@ -65,6 +65,16 @@ class ItemPatch(BaseModel):
     active: bool | None = None
 
 
+class FieldIn(BaseModel):
+    label: str | None = None
+    enabled: bool | None = None
+
+
+class FieldsPatch(BaseModel):
+    users: dict[str, FieldIn] = {}
+    items: dict[str, FieldIn] = {}
+
+
 class LoginIn(BaseModel):
     username: str
     password: str
@@ -145,6 +155,11 @@ def summary(request: Request):
 @router.get("/items")
 def list_items(request: Request, q: str = "", status: str = ""):
     return svc(request).list_items(q, status)
+
+
+@router.get("/fields")
+def get_fields(request: Request):
+    return svc(request).get_fields()
 
 
 @router.get("/users")
@@ -244,6 +259,11 @@ def create_item(body: ItemIn, request: Request, _: int = Depends(require_admin))
 @router.patch("/items/{item_id}")
 def update_item(item_id: int, body: ItemPatch, request: Request, _: int = Depends(require_admin)):
     return call(svc(request).update_item, item_id, body.model_dump(exclude_unset=True))
+
+
+@router.patch("/fields")
+def update_fields(body: FieldsPatch, request: Request, _: int = Depends(require_admin)):
+    return call(svc(request).set_fields, body.model_dump(exclude_unset=True))
 
 
 @router.post("/loans/{loan_id}/close")
