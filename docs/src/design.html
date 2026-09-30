@@ -375,8 +375,8 @@ erDiagram
   <div class="tbl"><table>
     <thead><tr><th>テーブル</th><th>内容</th><th>列</th></tr></thead>
     <tbody>
-      <tr><td><code>users</code></td><td style="white-space:nowrap">ユーザー</td><td>id, <b>tag_uid</b>（例 04A1B2C3D4E5F6）, name, department, note, active, created_at, updated_at</td></tr>
-      <tr><td><code>items</code></td><td style="white-space:nowrap">備品</td><td>id, <b>tag_uid</b>, name, category, location（保管場所）, note, active, created_at, updated_at</td></tr>
+      <tr><td><code>users</code></td><td style="white-space:nowrap">ユーザー</td><td>id, <b>tag_uid</b>（例 04A1B2C3D4E5F6）, name, department, team（チーム）, note, active, created_at, updated_at</td></tr>
+      <tr><td><code>items</code></td><td style="white-space:nowrap">備品</td><td>id, <b>tag_uid</b>, name, asset_no（管理番号。空でなければ一意）, category, location（保管場所）, note, active, created_at, updated_at</td></tr>
       <tr><td><code>loans</code></td><td style="white-space:nowrap">貸出の記録</td><td>id, item_id, user_id, device_id, started_at, <b>ended_at</b>（NULL なら貸出中）, end_reason（return / transfer / admin）</td></tr>
       <tr><td><code>devices</code></td><td style="white-space:nowrap">端末</td><td>id, name, token_hash, last_seen_at</td></tr>
       <tr><td><code>unknown_tags</code></td><td style="white-space:nowrap">未登録タグ</td><td>uid, device_id, first_seen_at, last_seen_at</td></tr>

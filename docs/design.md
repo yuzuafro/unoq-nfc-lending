@@ -247,8 +247,8 @@ erDiagram
 
 | テーブル | 内容 | 列 |
 |---|---|---|
-| `users` | ユーザー | id, **tag_uid**（例 04A1B2C3D4E5F6）, name, department, note, active, created_at, updated_at |
-| `items` | 備品 | id, **tag_uid**, name, category, location（保管場所）, note, active, created_at, updated_at |
+| `users` | ユーザー | id, **tag_uid**（例 04A1B2C3D4E5F6）, name, department, team（チーム）, note, active, created_at, updated_at |
+| `items` | 備品 | id, **tag_uid**, name, asset_no（管理番号。空でなければ一意）, category, location（保管場所）, note, active, created_at, updated_at |
 | `loans` | 貸出の記録 | id, item_id, user_id, device_id, started_at, **ended_at**（NULL なら貸出中）, end_reason（return / transfer / admin） |
 | `devices` | 端末 | id, name, token_hash, last_seen_at |
 | `unknown_tags` | 未登録タグ | uid, device_id, first_seen_at, last_seen_at |

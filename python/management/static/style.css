@@ -63,7 +63,10 @@ th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--ln)
 th { font-size: 12px; color: var(--mu); font-weight: 600; background: var(--bg); white-space: nowrap; }
 tr:last-child td { border-bottom: 0; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-td .sub { color: var(--mu); font-size: 12.5px; }
+td .sub, .feed .sub { color: var(--mu); font-size: 12.5px; }
+.sub .sep { margin: 0 6px; opacity: .6; }
+table.loans td { vertical-align: top; }
+table.loans td.num { white-space: nowrap; }
 td.actions { white-space: nowrap; text-align: right; }
 .empty { padding: 28px 16px; text-align: center; color: var(--mu); }
 code, .uid { font-family: var(--mono); font-size: 12.5px; }
@@ -76,8 +79,10 @@ code, .uid { font-family: var(--mono); font-size: 12.5px; }
 
 .feed { list-style: none; margin: 0; padding: 0; }
 .feed li { display: flex; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--ln); font-size: 14px; align-items: baseline; }
+.feed .what { flex: 1; min-width: 0; }
+.feed li > .uid { color: var(--mu); white-space: nowrap; }
 .feed li:last-child { border-bottom: 0; }
-.feed time { color: var(--mu); font-size: 12.5px; min-width: 88px; font-variant-numeric: tabular-nums; }
+.feed time { color: var(--mu); font-size: 12.5px; min-width: 80px; font-variant-numeric: tabular-nums; }
 
 .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }

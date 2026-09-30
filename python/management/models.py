@@ -18,6 +18,7 @@ class User(Base):
     tag_uid: Mapped[str] = mapped_column(String(32), unique=True)
     name: Mapped[str] = mapped_column(String(100))
     department: Mapped[str] = mapped_column(String(100), default="")
+    team: Mapped[str] = mapped_column(String(100), default="")
     note: Mapped[str] = mapped_column(Text, default="")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -29,6 +30,7 @@ class Item(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tag_uid: Mapped[str] = mapped_column(String(32), unique=True)
     name: Mapped[str] = mapped_column(String(100))
+    asset_no: Mapped[str] = mapped_column(String(64), default="")  # 管理番号; unique when non-empty
     category: Mapped[str] = mapped_column(String(100), default="")
     location: Mapped[str] = mapped_column(String(100), default="")
     note: Mapped[str] = mapped_column(Text, default="")

@@ -42,18 +42,20 @@ def iso(dt: datetime | None) -> str | None:
 
 def user_dict(u: User) -> dict:
     return {"id": u.id, "tag_uid": u.tag_uid, "name": u.name, "department": u.department,
-            "note": u.note, "active": u.active, "created_at": iso(u.created_at), "updated_at": iso(u.updated_at)}
+            "team": u.team, "note": u.note, "active": u.active,
+            "created_at": iso(u.created_at), "updated_at": iso(u.updated_at)}
 
 
 def item_dict(i: Item) -> dict:
-    return {"id": i.id, "tag_uid": i.tag_uid, "name": i.name, "category": i.category,
-            "location": i.location, "note": i.note, "active": i.active,
+    return {"id": i.id, "tag_uid": i.tag_uid, "name": i.name, "asset_no": i.asset_no,
+            "category": i.category, "location": i.location, "note": i.note, "active": i.active,
             "created_at": iso(i.created_at), "updated_at": iso(i.updated_at)}
 
 
 def loan_dict(l: Loan) -> dict:
-    return {"id": l.id, "item_id": l.item_id, "item_name": l.item.name, "user_id": l.user_id,
-            "user_name": l.user.name, "device_id": l.device_id, "started_at": iso(l.started_at),
+    return {"id": l.id, "item_id": l.item_id, "item_name": l.item.name, "item_asset_no": l.item.asset_no,
+            "user_id": l.user_id, "user_name": l.user.name, "user_team": l.user.team,
+            "device_id": l.device_id, "started_at": iso(l.started_at),
             "ended_at": iso(l.ended_at), "end_reason": l.end_reason}
 
 
@@ -244,7 +246,8 @@ class Service:
             stmt = select(User).order_by(User.name)
             if q:
                 like = f"%{q}%"
-                stmt = stmt.where(or_(User.name.ilike(like), User.department.ilike(like), User.tag_uid.ilike(like)))
+                stmt = stmt.where(or_(User.name.ilike(like), User.department.ilike(like),
+                                      User.team.ilike(like), User.tag_uid.ilike(like)))
             if not include_inactive:
                 stmt = stmt.where(User.active.is_(True))
             users = list(s.scalars(stmt))
@@ -260,7 +263,7 @@ class Service:
             uid = normalize_uid(data["tag_uid"])
             self._check_uid_free(s, uid)
             u = User(tag_uid=uid, name=data["name"].strip(), department=data.get("department", ""),
-                     note=data.get("note", ""), active=data.get("active", True))
+                     team=data.get("team", ""), note=data.get("note", ""), active=data.get("active", True))
             s.add(u)
             self._forget_unknown(s, uid)
             s.flush()
@@ -278,7 +281,7 @@ class Service:
                 self._check_uid_free(s, uid, ("user", u.id))
                 u.tag_uid = uid
                 self._forget_unknown(s, uid)
-            for f in ("name", "department", "note", "active"):
+            for f in ("name", "department", "team", "note", "active"):
                 if data.get(f) is not None:
                     setattr(u, f, data[f].strip() if isinstance(data[f], str) else data[f])
             s.flush()
@@ -291,7 +294,7 @@ class Service:
             stmt = select(Item).order_by(Item.name)
             if q:
                 like = f"%{q}%"
-                stmt = stmt.where(or_(Item.name.ilike(like), Item.category.ilike(like),
+                stmt = stmt.where(or_(Item.name.ilike(like), Item.asset_no.ilike(like), Item.category.ilike(like),
                                       Item.location.ilike(like), Item.tag_uid.ilike(like)))
             items = list(s.scalars(stmt))
             open_loans = {l.item_id: l for l in s.scalars(select(Loan).where(Loan.ended_at.is_(None)))}
@@ -302,7 +305,7 @@ class Service:
                 if status and st != status:
                     continue
                 loan = {"loan_id": l.id, "user_id": l.user_id, "user_name": l.user.name,
-                        "started_at": iso(l.started_at)} if l else None
+                        "user_team": l.user.team, "started_at": iso(l.started_at)} if l else None
                 out.append({**item_dict(i), "status": st, "loan": loan})
             return out
 
@@ -310,7 +313,9 @@ class Service:
         with self.session() as s:
             uid = normalize_uid(data["tag_uid"])
             self._check_uid_free(s, uid)
-            i = Item(tag_uid=uid, name=data["name"].strip(), category=data.get("category", ""),
+            asset_no = data.get("asset_no", "").strip()
+            self._check_asset_no_free(s, asset_no)
+            i = Item(tag_uid=uid, name=data["name"].strip(), asset_no=asset_no, category=data.get("category", ""),
                      location=data.get("location", ""), note=data.get("note", ""), active=data.get("active", True))
             s.add(i)
             self._forget_unknown(s, uid)
@@ -329,13 +334,23 @@ class Service:
                 self._check_uid_free(s, uid, ("item", i.id))
                 i.tag_uid = uid
                 self._forget_unknown(s, uid)
-            for f in ("name", "category", "location", "note", "active"):
+            if data.get("asset_no") is not None:
+                self._check_asset_no_free(s, data["asset_no"].strip(), i.id)
+            for f in ("name", "asset_no", "category", "location", "note", "active"):
                 if data.get(f) is not None:
                     setattr(i, f, data[f].strip() if isinstance(data[f], str) else data[f])
             s.flush()
             out = item_dict(i)
         self.hub.publish("item_changed", id=item_id)
         return out
+
+    @staticmethod
+    def _check_asset_no_free(s: Session, asset_no: str, own_id: int | None = None) -> None:
+        if not asset_no:  # blank is allowed for any number of items
+            return
+        found = s.scalar(select(Item).where(Item.asset_no == asset_no))
+        if found and found.id != own_id:
+            raise ServiceError("asset_no_in_use", f"この管理番号は備品「{found.name}」に登録済みです", 409)
 
     @staticmethod
     def _forget_unknown(s: Session, uid: str) -> None:
@@ -369,9 +384,9 @@ class Service:
         data = self.list_loans(limit=100000, **filters)["loans"]
         buf = io.StringIO()
         w = csv.writer(buf)
-        w.writerow(["貸出ID", "備品", "ユーザー", "端末", "開始(UTC)", "終了(UTC)", "終了理由"])
+        w.writerow(["貸出ID", "備品", "管理番号", "ユーザー", "チーム", "端末", "開始(UTC)", "終了(UTC)", "終了理由"])
         for l in data:
-            w.writerow([l["id"], l["item_name"], l["user_name"], l["device_id"] or "",
+            w.writerow([l["id"], l["item_name"], l["item_asset_no"], l["user_name"], l["user_team"], l["device_id"] or "",
                         l["started_at"], l["ended_at"] or "", l["end_reason"] or ""])
         return "\ufeff" + buf.getvalue()  # BOM so Excel opens it as UTF-8
 
@@ -394,15 +409,18 @@ class Service:
             started = s.scalars(select(Loan).order_by(Loan.started_at.desc()).limit(limit)).all()
             ended = s.scalars(select(Loan).where(Loan.ended_at.is_not(None))
                               .order_by(Loan.ended_at.desc()).limit(limit)).all()
+            def who(l: Loan) -> dict:
+                return {"item_name": l.item.name, "item_asset_no": l.item.asset_no,
+                        "user_name": l.user.name, "user_team": l.user.team}
+
             events = []
             for l in started:
-                events.append({"at": iso(l.started_at), "type": "checkout", "item_name": l.item.name,
-                               "user_name": l.user.name})
+                events.append({"at": iso(l.started_at), "type": "checkout", **who(l)})
             for l in ended:
                 if l.end_reason == "transfer":
                     continue  # shown via the new loan's checkout; avoid a duplicate line
-                events.append({"at": iso(l.ended_at), "type": "return", "item_name": l.item.name,
-                               "user_name": l.user.name, "by_admin": l.end_reason == "admin"})
+                events.append({"at": iso(l.ended_at), "type": "return", **who(l),
+                               "by_admin": l.end_reason == "admin"})
             events.sort(key=lambda e: e["at"], reverse=True)
             return events[:limit]
 

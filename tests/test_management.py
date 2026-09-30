@@ -104,6 +104,46 @@ def test_tag_uid_unique_across_users_and_items(env):
     assert client.post("/api/v1/users", json={"tag_uid": "xyz", "name": "bad"}).status_code == 400
 
 
+def test_asset_no_and_team(env):
+    client, dev, _ = env
+    u1, _, it = seed(client)
+    assert it["asset_no"] == "" and u1["team"] == ""
+    assert client.patch(f"/api/v1/items/{it['id']}", json={"asset_no": " PC-0001 "}).json()["asset_no"] == "PC-0001"
+    assert client.patch(f"/api/v1/users/{u1['id']}", json={"team": "開発1"}).json()["team"] == "開発1"
+    assert [i["name"] for i in client.get("/api/v1/items?q=PC-0001").json()] == ["ノートPC 1"]
+    assert [u["name"] for u in client.get("/api/v1/users?q=開発1").json()] == ["山田"]
+    # Asset numbers are unique, but any number of items may leave it blank.
+    r = client.post("/api/v1/items", json={"tag_uid": "04112233445567", "name": "dup", "asset_no": "PC-0001"})
+    assert r.status_code == 409 and r.json()["detail"]["code"] == "asset_no_in_use"
+    assert client.post("/api/v1/items", json={"tag_uid": "04112233445567", "name": "no number"}).status_code == 201
+    assert client.patch(f"/api/v1/items/{it['id']}", json={"asset_no": "PC-0001"}).status_code == 200  # own number
+    # The dashboard feed carries both, so each line shows who / which item unambiguously.
+    client.post("/api/v1/touches", json={"user_uid": USER_UID, "item_uid": ITEM_UID}, headers=dev)
+    e = client.get("/api/v1/summary").json()["recent"][0]
+    assert (e["user_team"], e["item_asset_no"]) == ("開発1", "PC-0001")
+    assert client.get("/api/v1/items?status=on_loan").json()[0]["loan"]["user_team"] == "開発1"
+    l = client.get("/api/v1/loans").json()["loans"][0]
+    assert (l["user_team"], l["item_asset_no"]) == ("開発1", "PC-0001")
+    assert "PC-0001" in client.get("/api/v1/loans.csv").text
+
+
+def test_old_database_gets_new_columns(tmp_path):
+    import sqlite3
+    from management.db import make_engine, make_session_factory
+    db = tmp_path / "old.db"
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE items (id INTEGER PRIMARY KEY, tag_uid VARCHAR(32), name VARCHAR(100))")
+    con.execute("INSERT INTO items (tag_uid, name) VALUES ('04112233445566', 'old')")
+    con.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, tag_uid VARCHAR(32), name VARCHAR(100))")
+    con.commit()
+    con.close()
+    make_session_factory(make_engine(f"sqlite:///{db}"))
+    con = sqlite3.connect(db)
+    assert con.execute("SELECT asset_no FROM items").fetchall() == [("",)]
+    assert "team" in [r[1] for r in con.execute("PRAGMA table_info(users)")]
+    con.close()
+
+
 def test_edit_user_and_replace_tag(env):
     client, dev, _ = env
     u1, _, _ = seed(client)

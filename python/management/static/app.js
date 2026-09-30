@@ -16,8 +16,15 @@ const fmt = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "n
 const fmtFull = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit",
                                                     day: "2-digit", hour: "2-digit", minute: "2-digit" });
 function when(iso, full = false) { return iso ? (full ? fmtFull : fmt).format(new Date(iso)) : "—"; }
+// Secondary line under a name: non-empty parts joined with " · " (asset numbers in mono).
+function meta(...parts) {
+  const html = parts.filter(Boolean).join('<span class="sep">·</span>');
+  return html ? `<div class="sub">${html}</div>` : "";
+}
+function assetNo(no) { return no ? `<span class="uid">${esc(no)}</span>` : ""; }
 function since(iso) {
-  const min = Math.floor((Date.now() - new Date(iso)) / 60000);
+  // clamp: a browser clock slightly behind the board would otherwise show "-1分" right after checkout
+  const min = Math.max(0, Math.floor((Date.now() - new Date(iso)) / 60000));
   if (min < 60) return `${min}分`;
   const h = Math.floor(min / 60);
   return h < 24 ? `${h}時間${min % 60}分` : `${Math.floor(h / 24)}日${h % 24}時間`;
@@ -180,10 +187,12 @@ function userForm(u = {}) {
     body: `${tagField(u.tag_uid)}
       <label class="field"><span>名前</span><input name="name" value="${esc(u.name)}" required maxlength="100"></label>
       <label class="field"><span>部署</span><input name="department" value="${esc(u.department)}"></label>
+      <label class="field"><span>チーム</span><input name="team" value="${esc(u.team)}"></label>
       <label class="field"><span>メモ</span><textarea name="note" rows="2">${esc(u.note)}</textarea></label>
       ${isNew ? "" : `<label class="check"><input type="checkbox" name="active" ${u.active ? "checked" : ""}> 有効（外すと貸出できなくなります）</label>`}`,
     onSubmit: async (f) => {
-      const body = { tag_uid: f.get("tag_uid"), name: f.get("name"), department: f.get("department"), note: f.get("note") };
+      const body = { tag_uid: f.get("tag_uid"), name: f.get("name"), department: f.get("department"),
+                     team: f.get("team"), note: f.get("note") };
       if (!isNew) body.active = f.get("active") === "on";
       await api(isNew ? "/users" : `/users/${u.id}`, { method: isNew ? "POST" : "PATCH", body });
       toast(isNew ? "ユーザーを追加しました" : "ユーザーを更新しました");
@@ -200,12 +209,14 @@ function itemForm(i = {}) {
     title: isNew ? "備品を追加" : "備品を編集",
     body: `${tagField(i.tag_uid)}
       <label class="field"><span>名前</span><input name="name" value="${esc(i.name)}" required maxlength="100"></label>
+      <label class="field"><span>管理番号</span><input name="asset_no" value="${esc(i.asset_no)}" maxlength="64" placeholder="例 PC-0001"></label>
       <label class="field"><span>カテゴリ</span><input name="category" value="${esc(i.category)}" placeholder="例 PC、工具"></label>
       <label class="field"><span>保管場所</span><input name="location" value="${esc(i.location)}"></label>
       <label class="field"><span>メモ</span><textarea name="note" rows="2">${esc(i.note)}</textarea></label>
       ${isNew ? "" : `<label class="check"><input type="checkbox" name="active" ${i.active ? "checked" : ""}> 有効（外すと貸出できなくなります）</label>`}`,
     onSubmit: async (f) => {
-      const body = { tag_uid: f.get("tag_uid"), name: f.get("name"), category: f.get("category"),
+      const body = { tag_uid: f.get("tag_uid"), name: f.get("name"), asset_no: f.get("asset_no"),
+                     category: f.get("category"),
                      location: f.get("location"), note: f.get("note") };
       if (!isNew) body.active = f.get("active") === "on";
       await api(isNew ? "/items" : `/items/${i.id}`, { method: isNew ? "POST" : "PATCH", body });
@@ -241,17 +252,19 @@ const views = {
       </div>
       <div class="grid2">
         <section class="panel"><h2>貸出中の備品</h2>
-          ${items.length ? `<div class="table-wrap"><table>
-            <thead><tr><th>備品</th><th>借りている人</th><th>貸出日時</th><th class="num">経過</th></tr></thead>
-            <tbody>${items.map(i => `<tr><td>${esc(i.name)}<div class="sub">${esc(i.location)}</div></td>
-              <td>${esc(i.loan.user_name)}</td><td>${when(i.loan.started_at)}</td>
-              <td class="num">${since(i.loan.started_at)}</td></tr>`).join("")}</tbody></table></div>`
+          ${items.length ? `<div class="table-wrap"><table class="loans">
+            <thead><tr><th>備品</th><th>借りている人</th><th class="num">経過</th></tr></thead>
+            <tbody>${items.map(i => `<tr>
+              <td>${esc(i.name)}${meta(assetNo(i.asset_no), esc(i.location))}</td>
+              <td>${esc(i.loan.user_name)}${meta(esc(i.loan.user_team))}</td>
+              <td class="num">${since(i.loan.started_at)}${meta(`${when(i.loan.started_at)}〜`)}</td></tr>`).join("")}</tbody></table></div>`
             : `<div class="empty">貸出中の備品はありません</div>`}
         </section>
         <section class="panel"><h2>最近の操作</h2>
-          ${s.recent.length ? `<ul class="feed">${s.recent.map(e => `<li><time>${when(e.at)}</time>
-            <span>${e.type === "checkout" ? '<span class="badge b-ac">貸出</span>' : '<span class="badge b-ok">返却</span>'}
-            ${esc(e.user_name)} — ${esc(e.item_name)}${e.by_admin ? '<span class="sub">（管理者）</span>' : ""}</span></li>`).join("")}</ul>`
+          ${s.recent.length ? `<ul class="feed">${s.recent.slice(0, 10).map(e => `<li><time>${when(e.at)}</time>
+            ${e.type === "checkout" ? '<span class="badge b-ac">貸出</span>' : '<span class="badge b-ok">返却</span>'}
+            <div class="what">${esc(e.item_name)}${meta(esc(e.user_name), esc(e.user_team), e.by_admin && "管理者が操作")}</div>
+            ${assetNo(e.item_asset_no)}</li>`).join("")}</ul>`
             : `<div class="empty">まだ操作はありません</div>`}
         </section>
       </div>`;
@@ -264,16 +277,16 @@ const views = {
     return `
       <div class="head"><h1>備品</h1><button class="btn primary admin-only" id="add-item">＋ 備品を追加</button></div>
       <div class="toolbar">
-        <input type="search" id="item-q" placeholder="名前・カテゴリ・保管場所で検索" value="${esc(state.itemQuery)}">
+        <input type="search" id="item-q" placeholder="名前・管理番号・カテゴリ・保管場所で検索" value="${esc(state.itemQuery)}">
         <div class="chips">${chip("", "すべて")}${chip("available", "在庫あり")}${chip("on_loan", "貸出中")}${chip("inactive", "無効")}</div>
       </div>
       <section class="panel">
         ${items.length ? `<div class="table-wrap"><table>
-          <thead><tr><th>状態</th><th>備品</th><th>カテゴリ</th><th>保管場所</th><th>借りている人</th><th class="admin-only"></th></tr></thead>
+          <thead><tr><th>状態</th><th>備品</th><th>管理番号</th><th>カテゴリ</th><th>保管場所</th><th>借りている人</th><th class="admin-only"></th></tr></thead>
           <tbody>${items.map(i => `<tr>
             <td>${badge(i.status)}</td>
             <td>${esc(i.name)}<div class="sub uid">${esc(i.tag_uid)}</div></td>
-            <td>${esc(i.category)}</td><td>${esc(i.location)}</td>
+            <td>${esc(i.asset_no)}</td><td>${esc(i.category)}</td><td>${esc(i.location)}</td>
             <td>${i.loan ? `${esc(i.loan.user_name)}<div class="sub">${when(i.loan.started_at)} から</div>` : ""}</td>
             <td class="actions admin-only">
               ${i.loan ? `<button class="btn small" data-close="${i.loan.loan_id}" data-label="${esc(i.name)}">返却にする</button>` : ""}
@@ -286,13 +299,13 @@ const views = {
     const users = await api(`/users?${new URLSearchParams({ q: state.userQuery })}`);
     return `
       <div class="head"><h1>ユーザー</h1><button class="btn primary admin-only" id="add-user">＋ ユーザーを追加</button></div>
-      <div class="toolbar"><input type="search" id="user-q" placeholder="名前・部署で検索" value="${esc(state.userQuery)}"></div>
+      <div class="toolbar"><input type="search" id="user-q" placeholder="名前・部署・チームで検索" value="${esc(state.userQuery)}"></div>
       <section class="panel">
         ${users.length ? `<div class="table-wrap"><table>
-          <thead><tr><th>名前</th><th>部署</th><th>借りている備品</th><th>状態</th><th class="admin-only"></th></tr></thead>
+          <thead><tr><th>名前</th><th>部署</th><th>チーム</th><th>借りている備品</th><th>状態</th><th class="admin-only"></th></tr></thead>
           <tbody>${users.map(u => `<tr>
             <td>${esc(u.name)}<div class="sub uid">${esc(u.tag_uid)}</div></td>
-            <td>${esc(u.department)}</td>
+            <td>${esc(u.department)}</td><td>${esc(u.team)}</td>
             <td>${u.loans.length ? u.loans.map(l => `${esc(l.item_name)} <span class="sub">${when(l.started_at)}〜</span>`).join("<br>") : '<span class="sub">なし</span>'}</td>
             <td>${u.active ? '<span class="badge b-ok">有効</span>' : '<span class="badge b-mu">無効</span>'}</td>
             <td class="actions admin-only"><button class="btn small" data-edit-user="${u.id}">編集</button></td></tr>`).join("")}</tbody></table></div>`
@@ -320,7 +333,8 @@ const views = {
         ${data.loans.length ? `<div class="table-wrap"><table>
           <thead><tr><th>備品</th><th>ユーザー</th><th>貸出</th><th>返却</th><th>理由</th><th class="admin-only"></th></tr></thead>
           <tbody>${data.loans.map(l => `<tr>
-            <td>${esc(l.item_name)}</td><td>${esc(l.user_name)}</td>
+            <td>${esc(l.item_name)}${meta(assetNo(l.item_asset_no))}</td>
+            <td>${esc(l.user_name)}${meta(esc(l.user_team))}</td>
             <td>${when(l.started_at, true)}</td>
             <td>${l.ended_at ? when(l.ended_at, true) : '<span class="badge b-ac">貸出中</span>'}</td>
             <td>${esc(REASON[l.end_reason] || "")}</td>

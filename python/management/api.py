@@ -31,6 +31,7 @@ class UserIn(BaseModel):
     tag_uid: str
     name: str = Field(min_length=1, max_length=100)
     department: str = ""
+    team: str = ""
     note: str = ""
     active: bool = True
 
@@ -39,6 +40,7 @@ class UserPatch(BaseModel):
     tag_uid: str | None = None
     name: str | None = Field(default=None, min_length=1, max_length=100)
     department: str | None = None
+    team: str | None = None
     note: str | None = None
     active: bool | None = None
 
@@ -46,6 +48,7 @@ class UserPatch(BaseModel):
 class ItemIn(BaseModel):
     tag_uid: str
     name: str = Field(min_length=1, max_length=100)
+    asset_no: str = Field(default="", max_length=64)
     category: str = ""
     location: str = ""
     note: str = ""
@@ -55,6 +58,7 @@ class ItemIn(BaseModel):
 class ItemPatch(BaseModel):
     tag_uid: str | None = None
     name: str | None = Field(default=None, min_length=1, max_length=100)
+    asset_no: str | None = Field(default=None, max_length=64)
     category: str | None = None
     location: str | None = None
     note: str | None = None
