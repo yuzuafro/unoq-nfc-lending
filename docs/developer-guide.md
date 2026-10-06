@@ -102,6 +102,7 @@ sh tests/run.sh              # 引数は pytest に渡る（例：-k touch）
 - App と同じベースイメージ（`python-apps-base`）に sqlalchemy と pytest を入れた一時コンテナで実行します。**起動中の App には影響しません。**
 - Management のテストは、テストごとに一時ディレクトリへ SQLite を作り、FastAPI の TestClient で API を呼びます。
 - Edge のテストは、Management API と LED を偽物に置き換えて状態遷移だけを検証します（HTTP・Bridge は使わない）。
+- nfc-agent のテスト（`test_agent.py`）は、pyscard を偽物に置き換えて PC/SC 方式の UID 取得と重複読取の抑止を検証します（リーダーも pcscd も使わない）。
 
 ### ② 実機の App ＋ 疑似リーダー
 

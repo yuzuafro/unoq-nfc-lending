@@ -116,7 +116,7 @@ unoq-nfc-lending/
 │   ├── management/        # app, api, service, models, db, security, events, static/（Web UI）
 │   └── requirements.txt   # sqlalchemy（fastapi・uvicorn・httpx はベースイメージに同梱）
 ├── sketch/                # sketch.ino, patterns.h（gen.py で生成）, sketch.yaml
-├── nfc-agent/             # agent.py, Dockerfile, compose.yaml（App の外で常駐）
+├── nfc-agent/             # agent.py, pcsc.py, Dockerfile, compose.yaml（App の外で常駐）
 ├── deploy/management/     # Phase 2 用の Dockerfile・compose.yaml
 ├── tests/                 # pytest（sh tests/run.sh）
 ├── data/                  # 実行時に作られる：DB・バックアップ・端末トークン・app.env（git 対象外）
