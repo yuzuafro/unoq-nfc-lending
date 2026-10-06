@@ -7,6 +7,9 @@ services:
     restart: unless-stopped
     ports:
       - "8100:8100"
+    environment:
+      NFC_BACKENDS: nfcpy,pcsc   # RC-S380 (nfcpy) and CCID readers like the Zoweetek ZW-12026-12 (pcsc)
+      # LOG_LEVEL: DEBUG         # also shows pcscd's own log
     volumes:
       - /dev:/dev          # bind /dev (not devices:) so a re-plugged reader is picked up
     device_cgroup_rules:

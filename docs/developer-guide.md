@@ -61,7 +61,8 @@ python/
     ├─ events.py        画面へのリアルタイム通知（WebSocket への配信）
     └─ static/          Web UI（HTML・JS・CSS）
 
-nfc-agent/agent.py      別コンテナ：RC-S380 を読み、UID を HTTP で配信する
+nfc-agent/agent.py      別コンテナ：リーダーを読み、UID を HTTP で配信する（RC-S380 は nfcpy で読む）
+nfc-agent/pcsc.py       同上の PC/SC 方式（ZW-12026-12 などの CCID リーダー。pcscd をコンテナ内で動かす）
 nfc-agent/fake_agent.py 開発用の疑似リーダー（POST /inject で UID を流す）
 sketch/sketch.ino       MCU：LED Matrix と RGB LED の表示（patterns.h は gen.py で生成）
 ```
@@ -209,7 +210,7 @@ sequenceDiagram
 | `python/requirements.txt` | `app restart`（差分があれば起動時に入る） |
 | `sketch/*` | `app restart`（ビルドと書き込みも行う）。古いままなら `arduino-app-cli app clean-cache user:unoq-nfc-lending --force` |
 | LED のドット絵 | `docs/src/gen.py` の `PATTERNS` → `cd docs/src && python3 gen.py template.html` → `app restart` |
-| `nfc-agent/agent.py` | `docker compose -f nfc-agent/compose.yaml up -d --build` |
+| `nfc-agent/*.py` | `sh tests/run.sh`（`tests/test_agent.py`）→ `docker compose -f nfc-agent/compose.yaml up -d --build` |
 | `data/app.env` | `app restart` |
 | このガイド | `developer-guide.md` だけ直して `gen.py` を実行（HTML 版 `docs/src/developer-guide.html` は Markdown から生成される） |
 | 設計書 | `design.md` と `docs/src/template.html` の両方を直して `gen.py` を実行 → `docs/src/design.html` が更新される |

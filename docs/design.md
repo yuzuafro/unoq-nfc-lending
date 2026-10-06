@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 版 | 0.4（2026-09-29：PoC #1 の結果を反映。0.3＝2026-09-26：実装に合わせて更新。PoC #2 の結果により NFC 読取は nfc-agent に分離） |
-| 対象ハードウェア | Arduino UNO Q、Sony RC-S380、NTAG215 NFCタグ（直径25mm） |
+| 対象ハードウェア | Arduino UNO Q、Sony RC-S380 または Zoweetek ZW-12026-12、NTAG215 NFCタグ（直径25mm） |
 | 状態 | 基本設計。PoCで確認する項目は[§12](#12-リスクとpoc計画)にまとめています |
 
 ---
@@ -43,6 +43,7 @@
 |---|---|
 | Arduino UNO Q | 確認済み（RAM 3.6GB、空きストレージ 14GB） |
 | Sony RC-S380（/S または /P） | USB ID `054c:06c3` または `054c:06c1` |
+| （または）Zoweetek ZW-12026-12 | 接触＋非接触の PC/SC（CCID）リーダー。nfcpy は使えないため PC/SC で読む |
 | **給電(PD)付き USB-C ハブ** | **追加で購入が必要。** UNO Q の USB-C は1ポートだけなので、ハブで電源とリーダーを同時につなぐ |
 | NTAG215 タグ（10枚） | ユーザーと備品の合計が10を超えるなら追加で購入 |
 
@@ -68,8 +69,8 @@
 
 ```mermaid
 flowchart TB
-  TAG["NTAG215<br/>ユーザー／備品"] -. タッチ .-> RDR[RC-S380]
-  RDR -- USB --> AGENT["nfc-agent<br/>別コンテナ・nfcpy"]
+  TAG["NTAG215<br/>ユーザー／備品"] -. タッチ .-> RDR["RC-S380 または<br/>ZW-12026-12"]
+  RDR -- USB --> AGENT["nfc-agent<br/>別コンテナ・nfcpy / PC/SC"]
   AGENT -- "UID（HTTP）" --> EDGE["Edge（App）<br/>nfc_reader・touch_fsm<br/>mgmt_client・display"]
   EDGE -- "HTTP（MGMT_URL）" --> MGMT["Management<br/>FastAPI・SQLite・Web UI"]
   EDGE -- "Bridge（RPC）" --> MCU["MCU（sketch）<br/>LED Matrix・RGB LED"]
@@ -82,7 +83,7 @@ flowchart TB
 
 **設計のポイント**
 
-- RC-S380 は **nfc-agent**（`docker compose` で常駐させる別コンテナ）が読み取り、UID を HTTP で Edge に流します。App コンテナには USB を開く権限がないためです（PoC #2）。
+- リーダーは **nfc-agent**（`docker compose` で常駐させる別コンテナ）が読み取り、UID を HTTP で Edge に流します。App コンテナには USB を開く権限がないためです（PoC #2）。
 - Edge は Management を **常に HTTP で呼びます**。Phase 1 の接続先は `localhost` です。移設するときは `data/app.env` の `MGMT_URL` を変えるだけで済みます（arduino-app-cli は App に環境変数を渡せないため、設定はこのファイルに書く）。
 - Management は **Arduino の Brick に依存しない FastAPI の単体アプリ**にします。Phase 1 では App 内のスレッドで uvicorn を起動し、Phase 2 では同じコードを Docker でPC上で動かします。
 - 貸出の判定（業務ルール）は **Management だけ**に置きます。端末を増やしてもルールは1か所で済みます。
@@ -93,7 +94,7 @@ flowchart TB
 
 | 層 | モジュール | 責務 |
 |---|---|---|
-| Agent | `nfc-agent/agent.py` | nfcpy で RC-S380 をポーリングしてUIDを取得し、`GET /events`（1行1イベントの NDJSON）で配信する。同じUIDが1.5秒以内に続けて読まれたら無視する（かざしている間の連続読取対策）。リーダーが抜かれても3秒ごとに再接続する。`GET /health` でリーダーの接続状態を返す |
+| Agent | `nfc-agent/agent.py` | リーダーをポーリングして UID を取得し、`GET /events`（1行1イベントの NDJSON）で配信する。読取は2方式を並行して動かし、どちらのリーダーをつないでも読める：**nfcpy**（RC-S380）と **PC/SC**（ZW-12026-12 などの CCID リーダー。コンテナ内で pcscd を動かし、`FF CA 00 00 00` で UID を取得、応答がなければ Type 2 タグのページ0〜2から UID を取り出す）。`NFC_BACKENDS` で片方だけにもできる。同じUIDが1.5秒以内に続けて読まれたら無視する（かざしている間の連続読取対策）。リーダーが抜かれても再接続する（コンテナには udev のイベントが届かないため、PC/SC 側は USB 機器の増減を見て pcscd を再起動する）。`GET /health` でリーダーの接続状態を返す |
 | Edge | `nfc_reader` | nfc-agent の `/events` を購読してUIDを受け取る（接続先 `AGENT_URL`、既定は `http://$HOST_IP:8100`）。切断されたら再接続する。読取方式を差し替えられるよう**アダプタとして分離**する |
 | Edge | `touch_fsm` | 「ユーザー → 備品」の状態遷移を管理する（[§5.2](#52-端末の状態遷移)） |
 | Edge | `mgmt_client` | Management API の呼出し。タイムアウトは3秒。失敗したら `OFFLINE` を表示する |
@@ -325,6 +326,7 @@ erDiagram
 | 1 | UNO Q が USB ホストとして RC-S380 を認識できない | ✅ **OK（確認済み）** | PD 付き USB-C ハブ経由で `054c:06c3`（RC-S380/P）として認識され、nfc-agent が nfcpy で開けた。NTAG215 の実タグ3枚で17回タッチし、すべて App まで届いた（2026-09-29） |
 | 2 | App コンテナから USB デバイスにアクセスできない | ❌ **NG（確認済み）** | 下記のとおり nfc-agent を別コンテナに分離した（**採用済み**） |
 | 3 | `app.yaml` の `ports` で 8000番を公開できない | ✅ **OK（確認済み）** | 実装した App を起動し、`0.0.0.0:8000` で待ち受けて LAN の IP から Web 画面と API に届くことを確認した |
+| 4 | UNO Q で Zoweetek ZW-12026-12（PC/SC）から NTAG215 の UID を読めない | ✅ **OK（確認済み）** | nfc-agent に PC/SC 方式を追加した。リーダーは `2ce3:9567`（Alcor Link AK9567）として認識され、libccid が対応表なしで CCID として開けた（非接触側は `[Contactless Card Reader]`）。RC-S380 で登録した NTAG215 の UID が同じ値で読め、未登録タグの判定とユーザー → 備品の貸出も動いた（2026-10-06） |
 
 **PoC #2 で分かったこと**
 

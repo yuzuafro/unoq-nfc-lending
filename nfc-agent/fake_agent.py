@@ -10,15 +10,13 @@ real agent, so stop the real one first.
 """
 import os
 import sys
-import types
 from http.server import ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-sys.modules.setdefault("nfc", types.ModuleType("nfc"))  # the HTTP side of agent.py does not need nfcpy
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import agent  # noqa: E402
 
-agent.state.update(reader=True, path="fake")
+agent.set_reader("fake", "fake")
 
 
 class Handler(agent.Handler):

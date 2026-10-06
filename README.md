@@ -5,7 +5,7 @@ NFCタグを **「ユーザー → 備品」の順にタッチ**して貸出・�
 - 設計書：[docs/design.md](docs/design.md)（HTML 版：[docs/src/design.html](docs/src/design.html)）
 - 開発者ガイド（開発時・本番の構成、DB、変更の反映方法）：[docs/developer-guide.md](docs/developer-guide.md)（HTML 版：[docs/src/developer-guide.html](docs/src/developer-guide.html)）
   - Markdown 版は GitHub 上でそのまま図も表示されます。HTML 版は同じ内容をダウンロードしてブラウザで開いて読むためのものです
-- 機材：Arduino UNO Q、Sony RC-S380、NTAG215 タグ、**給電(PD)付き USB-C ハブ**
+- 機材：Arduino UNO Q、Sony RC-S380（または Zoweetek ZW-12026-12）、NTAG215 タグ、**給電(PD)付き USB-C ハブ**
 
 ## 動作イメージ
 
@@ -25,14 +25,14 @@ RC-S380 にユーザーのタグ、続いて備品のタグをタッチすると
 
 | 項目 | 状況 |
 |---|---|
-| 実装 | Management（API・DB・Web UI）、Edge、sketch、nfc-agent、Phase 2 用の構成まで完了 |
-| 確認済み | テスト 25 件、Web UI の表示、sketch のコンパイル。**実機で App を起動**し、8000 番ポートの公開（PoC #3）と、疑似リーダーから送ったタッチでの貸出・切替・返却・エラー・未登録・登録読取・タイムアウトを確認（2026-09-26）。 **RC-S380 と NTAG215 の実タグでの読取（PoC #1）** を確認し、PD 付きハブ経由で `054c:06c3` を認識、17 回のタッチを取りこぼしなく処理、未登録・貸出・返却・エラー・タイムアウトも動作（2026-09-29）。実タグでの貸出者の切替と［タグを読み取る］での登録読取、LED Matrix の表示の目視確認（2026-09-30） |
+| 実装 | Management（API・DB・Web UI）、Edge、sketch、nfc-agent（RC-S380・PC/SC リーダー）、Phase 2 用の構成まで完了 |
+| 確認済み | テスト 33 件、Web UI の表示、sketch のコンパイル。**実機で App を起動**し、8000 番ポートの公開（PoC #3）と、疑似リーダーから送ったタッチでの貸出・切替・返却・エラー・未登録・登録読取・タイムアウトを確認（2026-09-26）。 **RC-S380 と NTAG215 の実タグでの読取（PoC #1）** を確認し、PD 付きハブ経由で `054c:06c3` を認識、17 回のタッチを取りこぼしなく処理、未登録・貸出・返却・エラー・タイムアウトも動作（2026-09-29）。実タグでの貸出者の切替と［タグを読み取る］での登録読取、LED Matrix の表示の目視確認（2026-09-30）。**Zoweetek ZW-12026-12（PC/SC）** でも RC-S380 で登録したタグが同じ UID で読め、貸出まで動作（2026-10-06） |
 
 ## 構成
 
 | 部分 | 場所 | 動く場所 |
 |---|---|---|
-| nfc-agent | [nfc-agent/](nfc-agent/) | UNO Q 上の別コンテナ。RC-S380 を読み、UID を `:8100` で配信（App コンテナは USB を開けないため） |
+| nfc-agent | [nfc-agent/](nfc-agent/) | UNO Q 上の別コンテナ。リーダーを読み、UID を `:8100` で配信（App コンテナは USB を開けないため）。RC-S380 は nfcpy、ZW-12026-12 などの PC/SC リーダーは pcscd で読む |
 | Edge | [python/edge/](python/edge/) | App 内。UID を受け取り、2段階タッチを判定し、LED に表示を指示 |
 | Management | [python/management/](python/management/) | App 内のスレッド（Phase 1）→ 管理PC（Phase 2）。業務ルール・DB・API・Web 画面（`:8000`） |
 | sketch | [sketch/](sketch/) | MCU。LED Matrix と RGB LED（LED4）の表示 |
@@ -46,6 +46,14 @@ cd ~/ArduinoApps/unoq-nfc-lending
 docker compose -f nfc-agent/compose.yaml up -d --build
 curl localhost:8100/health        # {"reader": true, ...} ならリーダーを認識している
 ```
+
+RC-S380 と Zoweetek ZW-12026-12 のどちらをつないでも読めます（両方の読取方式が常に動いている）。リーダーを差し替えたら `/health` の `path` で認識されたことを確認してください。
+
+#### Zoweetek ZW-12026-12 を使うとき
+
+- 接触＋非接触の2スロットのリーダーなので、`/health` の `path` に PC/SC のリーダー名が2つ並ぶ（`Alcor Link AK9567 00 00` と `… [Contactless Card Reader] 01 00`）。タグは非接触側（上面）にかざす
+- UID は RC-S380 で読んだ値と同じなので、登録済みのタグをそのまま使える（2026-10-06 確認）
+- 認識しないときは `NFC_BACKENDS` の下の `LOG_LEVEL: DEBUG` を有効にして `up -d` し、`docker logs` で pcscd のログ（`Looking for a driver for VID: ...`）を見る
 
 `restart: unless-stopped` なので、次からはボードの起動時に自動で立ち上がります。
 
