@@ -91,6 +91,9 @@ def test_inactive_user_or_item_is_error(env):
     u1, _, it = seed(client)
     client.patch(f"/api/v1/users/{u1['id']}", json={"active": False})
     assert touch(client, dev, USER_UID)["action"] == "error"
+    assert [u["name"] for u in client.get("/api/v1/users?active=true").json()] == ["佐藤"]
+    assert [u["name"] for u in client.get("/api/v1/users?active=false").json()] == ["山田"]
+    assert len(client.get("/api/v1/users").json()) == 2
     client.patch(f"/api/v1/users/{u1['id']}", json={"active": True})
     client.patch(f"/api/v1/items/{it['id']}", json={"active": False})
     assert touch(client, dev, USER_UID)["action"] == "error"

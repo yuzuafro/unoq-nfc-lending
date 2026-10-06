@@ -2,7 +2,7 @@
 // NFC備品管理 Web UI — plain JS, no build step. Talks to /api/v1 on the same origin.
 
 const API = "/api/v1";
-const state = { admin: null, view: "dashboard", itemFilter: "", itemQuery: "", userQuery: "",
+const state = { admin: null, view: "dashboard", itemFilter: "", itemQuery: "", userQuery: "", userFilter: "true",
                 loanFilter: { active: false, from: "", to: "", user_id: "", item_id: "" } };
 const $ = (sel, root = document) => root.querySelector(sel);
 const view = $("#view");
@@ -314,10 +314,16 @@ const views = {
   },
 
   async users() {
-    const users = await api(`/users?${new URLSearchParams({ q: state.userQuery })}`);
+    const qs = new URLSearchParams({ q: state.userQuery });
+    if (state.userFilter) qs.set("active", state.userFilter);
+    const users = await api(`/users?${qs}`);
+    const chip = (v, label) => `<button class="chip ${state.userFilter === v ? "on" : ""}" data-user-filter="${v}">${label}</button>`;
     return `
       <div class="head"><h1>ユーザー</h1><button class="btn primary admin-only" id="add-user">＋ ユーザーを追加</button></div>
-      <div class="toolbar"><input type="search" id="user-q" placeholder="${esc(searchHint("users"))}" value="${esc(state.userQuery)}"></div>
+      <div class="toolbar">
+        <input type="search" id="user-q" placeholder="${esc(searchHint("users"))}" value="${esc(state.userQuery)}">
+        <div class="chips">${chip("true", "有効")}${chip("false", "無効")}${chip("", "すべて")}</div>
+      </div>
       <section class="panel">
         ${users.length ? `<div class="table-wrap"><table>
           <thead><tr><th>名前</th>${FIELD_KEYS.users.map(k => th("users", k)).join("")}<th>借りている備品</th><th>状態</th><th class="admin-only"></th></tr></thead>
@@ -427,6 +433,7 @@ view.addEventListener("click", async (e) => {
     if (t.id === "add-item") itemForm();
     else if (t.id === "add-user") userForm();
     else if (d.filter !== undefined) { state.itemFilter = d.filter; render(); }
+    else if (d.userFilter !== undefined) { state.userFilter = d.userFilter; render(); }
     else if (d.editItem) itemForm((await api("/items")).find(i => i.id === +d.editItem));
     else if (d.editUser) userForm((await api("/users")).find(u => u.id === +d.editUser));
     else if (d.close) closeLoan(d.close, d.label);

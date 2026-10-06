@@ -281,15 +281,15 @@ class Service:
             kind = "ユーザー" if found[0] == "user" else "備品"
             raise ServiceError("uid_in_use", f"このタグは{kind}「{found[1].name}」に登録済みです", 409)
 
-    def list_users(self, q: str = "", include_inactive: bool = True) -> list[dict]:
+    def list_users(self, q: str = "", active: bool | None = None) -> list[dict]:
         with self.session() as s:
             stmt = select(User).order_by(User.name)
             if q:
                 like = f"%{q}%"
                 stmt = stmt.where(or_(User.name.ilike(like), User.department.ilike(like),
                                       User.team.ilike(like), User.tag_uid.ilike(like)))
-            if not include_inactive:
-                stmt = stmt.where(User.active.is_(True))
+            if active is not None:
+                stmt = stmt.where(User.active.is_(active))
             users = list(s.scalars(stmt))
             open_loans = s.scalars(select(Loan).where(Loan.ended_at.is_(None))).all()
             by_user: dict[int, list] = {}

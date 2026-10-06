@@ -163,8 +163,8 @@ def get_fields(request: Request):
 
 
 @router.get("/users")
-def list_users(request: Request, q: str = ""):
-    return svc(request).list_users(q)
+def list_users(request: Request, q: str = "", active: bool | None = None):
+    return svc(request).list_users(q, active)
 
 
 def _loan_filters(active: bool | None, user_id: int | None, item_id: int | None,
