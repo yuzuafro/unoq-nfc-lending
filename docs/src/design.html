@@ -123,7 +123,7 @@ html{scroll-behavior:smooth}
 
 <main>
 <header>
-  <div class="eyebrow">Design Doc v0.4 · Arduino UNO Q × RC-S380 / ZW-12026-12</div>
+  <div class="eyebrow">Design Doc v0.5 · Arduino UNO Q × RC-S380 / ZW-12026-12</div>
   <h1>NFC備品管理システム 設計書</h1>
   <p class="lead">ユーザーと備品に NFC タグを貼り、<b>「ユーザー → 備品」の順にタッチ</b>するだけで貸出と返却を記録します。結果は LED Matrix に表示し、備品・ユーザー・貸出状況は Web 画面で管理します。</p>
   <div class="meta">
@@ -234,7 +234,7 @@ flowchart TB
       <tr><td><span class="pill p-mu">MCU</span></td><td><code>sketch.ino</code></td><td>表示パターンを描画する（LED Matrix・RGB LED の LED4）。<code>patterns.h</code> は <code>docs/src/gen.py</code> の <code>PATTERNS</code>（§7 の図と同じドット絵）から生成する。Python から最初の指示が来るまでは何も描かない（起動ロゴを乱さないため）</td></tr>
       <tr><td><span class="pill p-ac">Mgmt</span></td><td><code>api</code></td><td>REST API（<code>/api/v1</code>）と WebSocket（<code>/ws/events</code>）</td></tr>
       <tr><td><span class="pill p-ac">Mgmt</span></td><td><code>service</code></td><td>貸出の判定、登録モード、ログイン</td></tr>
-      <tr><td><span class="pill p-ac">Mgmt</span></td><td><code>repository</code></td><td>SQLAlchemy で DB にアクセスする（SQLite / PostgreSQL を切り替えられる）</td></tr>
+      <tr><td><span class="pill p-ac">Mgmt</span></td><td><code>models</code>・<code>db</code></td><td>テーブル定義（SQLAlchemy）と DB 接続（SQLite / PostgreSQL を切り替えられる）</td></tr>
       <tr><td><span class="pill p-ac">Mgmt</span></td><td><code>static/</code></td><td>Web UI（HTML + JavaScript）</td></tr>
     </tbody>
   </table></div>
@@ -388,7 +388,7 @@ erDiagram
   <ul>
     <li><code>tag_uid</code> は users と items をまたいで一意にします（同じタグを両方に登録できないよう、サービス層で確認する）。</li>
     <li>貸出中かどうかは <code>loans.ended_at IS NULL</code> で判断します。1つの備品に貸出中の行は1つまでです（部分ユニークインデックス）。</li>
-    <li>削除は <code>active=false</code>（論理削除）で行います。履歴は消えません。</li>
+    <li>削除は <code>active=false</code>（論理削除）で行います。履歴は消えません。物理削除はしません（貸出の記録が <code>user_id</code>・<code>item_id</code> で参照しているため）。ユーザーと備品の一覧は、既定で有効なものだけを表示します。</li>
     <li>department・team・asset_no・category・location の<b>画面上の項目名</b>は現場ごとに変えられます（例：部署 → 課、チーム → 社員種別）。無効にした項目は画面に表示しません。変わるのは表示と CSV の見出しだけで、列名と保存済みの値はそのままです。</li>
   </ul>
 </section>
@@ -416,6 +416,16 @@ erDiagram
       <tr><td>—</td><td><code>POST /auth/login</code> <code>/auth/logout</code> <code>/auth/password</code>、<code>GET /auth/me</code></td><td>管理者のログイン（セッション Cookie）とパスワード変更</td></tr>
     </tbody>
   </table></div>
+  <h3>一覧の絞込み（クエリパラメータ）</h3>
+  <p>どれも省略すると全件です。文字列の検索は部分一致です。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>パス</th><th>パラメータ</th></tr></thead>
+    <tbody>
+      <tr><td><code>GET /items</code></td><td><code>q</code>（名前・管理番号・カテゴリ・保管場所・UID）、<code>active</code>（<code>true</code> / <code>false</code>）、<code>loan</code>（<code>available</code> / <code>on_loan</code>）、<code>status</code>（<code>available</code> / <code>on_loan</code> / <code>inactive</code>）</td></tr>
+      <tr><td><code>GET /users</code></td><td><code>q</code>（名前・部署・チーム・UID）、<code>active</code>（<code>true</code> / <code>false</code>）</td></tr>
+      <tr><td><code>GET /loans</code> <code>GET /loans.csv</code></td><td><code>from</code>・<code>to</code>（JST の日付）、<code>user_q</code>（名前・部署・チーム）、<code>item_q</code>（名前・管理番号・カテゴリ・保管場所）、<code>user_id</code>・<code>item_id</code>、<code>active</code>（<code>true</code> で貸出中のみ）。<code>/loans</code> は <code>limit</code>（既定200）・<code>offset</code> も使える</td></tr>
+    </tbody>
+  </table></div>
 </section>
 
 <section id="s10">
@@ -424,9 +434,9 @@ erDiagram
     <thead><tr><th>画面</th><th>誰が使うか</th><th>主な内容</th></tr></thead>
     <tbody>
       <tr><td>ダッシュボード</td><td>全員</td><td>貸出中の一覧（誰が・いつから）、在庫数、最近の操作（リアルタイム更新）</td></tr>
-      <tr><td>備品</td><td>全員（編集は管理者）</td><td>一覧・検索、状態バッジ（在庫あり／貸出中／無効）、追加・編集</td></tr>
-      <tr><td>ユーザー</td><td>全員（編集は管理者）</td><td>一覧、そのユーザーが借りている備品、追加・編集</td></tr>
-      <tr><td>貸出履歴</td><td>全員</td><td>期間・ユーザー・備品で絞込み、CSV 出力</td></tr>
+      <tr><td>備品</td><td>全員（編集は管理者）</td><td>一覧・検索、状態バッジ（在庫あり／貸出中／無効）、「有効／無効／すべて」と「在庫あり／貸出中／すべて」の2軸で絞込み（既定は有効・すべて）、追加・編集・無効化</td></tr>
+      <tr><td>ユーザー</td><td>全員（編集は管理者）</td><td>一覧・検索、そのユーザーが借りている備品、「有効／無効／すべて」で絞込み（既定は有効）、追加・編集・無効化</td></tr>
+      <tr><td>貸出履歴</td><td>全員</td><td>期間（カレンダー。今日・今週・今月・先月・過去30日の選択肢、年・月の切替）、ユーザー・備品の名前や属性（部署・チーム・管理番号・カテゴリ・保管場所）で絞込み（入力しながら候補から選べる）、貸出中のみ、CSV 出力（画面と同じ条件）</td></tr>
       <tr><td>未登録タグ</td><td>管理者</td><td>読み取られた未登録の UID → ユーザーまたは備品として登録</td></tr>
       <tr><td>設定</td><td>管理者</td><td>端末の一覧と状態、項目名の変更、管理者パスワードの変更、DB のバックアップ</td></tr>
     </tbody>
