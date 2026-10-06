@@ -329,20 +329,24 @@ class Service:
         self.hub.publish("user_changed", id=user_id)
         return out
 
-    def list_items(self, q: str = "", status: str = "") -> list[dict]:
+    def list_items(self, q: str = "", status: str = "", active: bool | None = None, loan_state: str = "") -> list[dict]:
+        """`status` filters on the combined state; `active` (有効/無効) and `loan_state` ("available" / "on_loan")
+        filter on the two axes separately."""
         with self.session() as s:
             stmt = select(Item).order_by(Item.name)
             if q:
                 like = f"%{q}%"
                 stmt = stmt.where(or_(Item.name.ilike(like), Item.asset_no.ilike(like), Item.category.ilike(like),
                                       Item.location.ilike(like), Item.tag_uid.ilike(like)))
+            if active is not None:
+                stmt = stmt.where(Item.active.is_(active))
             items = list(s.scalars(stmt))
             open_loans = {l.item_id: l for l in s.scalars(select(Loan).where(Loan.ended_at.is_(None)))}
             out = []
             for i in items:
                 l = open_loans.get(i.id)
                 st = "inactive" if not i.active else ("on_loan" if l else "available")
-                if status and st != status:
+                if (status and st != status) or (loan_state and (loan_state == "on_loan") != bool(l)):
                     continue
                 loan = {"loan_id": l.id, "user_id": l.user_id, "user_name": l.user.name,
                         "user_team": l.user.team, "started_at": iso(l.started_at)} if l else None
@@ -400,7 +404,7 @@ class Service:
 
     # ------------------------------------------------------------------ loans
     def list_loans(self, active: bool | None = None, user_id: int | None = None, item_id: int | None = None,
-                   date_from: datetime | None = None, date_to: datetime | None = None,
+                   user_q: str = "", item_q: str = "", date_from: datetime | None = None, date_to: datetime | None = None,
                    limit: int = 200, offset: int = 0) -> dict:
         with self.session() as s:
             stmt = select(Loan)
@@ -412,6 +416,14 @@ class Service:
                 stmt = stmt.where(Loan.user_id == user_id)
             if item_id:
                 stmt = stmt.where(Loan.item_id == item_id)
+            if user_q:
+                like = f"%{user_q}%"
+                stmt = stmt.where(Loan.user.has(or_(User.name.ilike(like), User.department.ilike(like),
+                                                    User.team.ilike(like))))
+            if item_q:
+                like = f"%{item_q}%"
+                stmt = stmt.where(Loan.item.has(or_(Item.name.ilike(like), Item.asset_no.ilike(like),
+                                                    Item.category.ilike(like), Item.location.ilike(like))))
             if date_from:
                 stmt = stmt.where(or_(Loan.ended_at.is_(None), Loan.ended_at >= date_from))
             if date_to:

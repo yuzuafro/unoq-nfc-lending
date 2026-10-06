@@ -153,8 +153,8 @@ def summary(request: Request):
 
 
 @router.get("/items")
-def list_items(request: Request, q: str = "", status: str = ""):
-    return svc(request).list_items(q, status)
+def list_items(request: Request, q: str = "", status: str = "", active: bool | None = None, loan: str = ""):
+    return svc(request).list_items(q, status, active, loan)
 
 
 @router.get("/fields")
@@ -167,26 +167,26 @@ def list_users(request: Request, q: str = "", active: bool | None = None):
     return svc(request).list_users(q, active)
 
 
-def _loan_filters(active: bool | None, user_id: int | None, item_id: int | None,
+def _loan_filters(active: bool | None, user_id: int | None, item_id: int | None, user_q: str, item_q: str,
                   date_from: date | None, date_to: date | None) -> dict:
-    return {"active": active, "user_id": user_id, "item_id": item_id,
+    return {"active": active, "user_id": user_id, "item_id": item_id, "user_q": user_q, "item_q": item_q,
             "date_from": jst_day_start(date_from), "date_to": jst_day_start(date_to, 1)}
 
 
 @router.get("/loans")
 def list_loans(request: Request, active: bool | None = None, user_id: int | None = None,
-               item_id: int | None = None, date_from: date | None = Query(None, alias="from"),
-               date_to: date | None = Query(None, alias="to"),
+               item_id: int | None = None, user_q: str = "", item_q: str = "",
+               date_from: date | None = Query(None, alias="from"), date_to: date | None = Query(None, alias="to"),
                limit: int = Query(200, le=1000), offset: int = 0):
     return svc(request).list_loans(limit=limit, offset=offset,
-                                   **_loan_filters(active, user_id, item_id, date_from, date_to))
+                                   **_loan_filters(active, user_id, item_id, user_q, item_q, date_from, date_to))
 
 
 @router.get("/loans.csv")
 def loans_csv(request: Request, active: bool | None = None, user_id: int | None = None,
-              item_id: int | None = None, date_from: date | None = Query(None, alias="from"),
-              date_to: date | None = Query(None, alias="to")):
-    body = svc(request).loans_csv(**_loan_filters(active, user_id, item_id, date_from, date_to))
+              item_id: int | None = None, user_q: str = "", item_q: str = "",
+              date_from: date | None = Query(None, alias="from"), date_to: date | None = Query(None, alias="to")):
+    body = svc(request).loans_csv(**_loan_filters(active, user_id, item_id, user_q, item_q, date_from, date_to))
     return Response(body, media_type="text/csv; charset=utf-8",
                     headers={"Content-Disposition": 'attachment; filename="loans.csv"'})
 

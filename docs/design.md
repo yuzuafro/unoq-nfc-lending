@@ -272,7 +272,7 @@ erDiagram
 | 端末（トークン） | `POST /scans` | UIDの種類を問い合わせる → `user` / `item` / `unknown` / `captured` |
 | 端末（トークン） | `POST /touches` | 貸出の判定と記録 → `checkout` / `return` / `transfer` / `error` |
 | 端末（トークン） | `POST /devices/{id}/heartbeat` | 死活監視（60秒ごと） |
-| 誰でも | `GET /items`・`GET /users`・`GET /loans`・`GET /loans.csv` | 一覧と検索（状態、期間、ユーザー、備品で絞込み）、CSV 出力 |
+| 誰でも | `GET /items`・`GET /users`・`GET /loans`・`GET /loans.csv` | 一覧と検索（状態、期間、ユーザー・備品の名前や属性で絞込み）、CSV 出力 |
 | 誰でも | `GET /fields` | 項目名の設定（ユーザー・備品の各項目の名前と、有効かどうか） |
 | 誰でも | `GET /summary` | ダッシュボード用の件数と最近の操作 |
 | 誰でも | `WS /ws/events` | タッチ・貸出・返却をリアルタイムで通知 |

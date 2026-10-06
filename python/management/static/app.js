@@ -2,8 +2,8 @@
 // NFC備品管理 Web UI — plain JS, no build step. Talks to /api/v1 on the same origin.
 
 const API = "/api/v1";
-const state = { admin: null, view: "dashboard", itemFilter: "", itemQuery: "", userQuery: "", userFilter: "true",
-                loanFilter: { active: false, from: "", to: "", user_id: "", item_id: "" } };
+const state = { admin: null, view: "dashboard", itemActive: "true", itemLoan: "", itemQuery: "", userQuery: "", userFilter: "true",
+                loanFilter: { active: false, from: "", to: "", user_q: "", item_q: "" } };
 const $ = (sel, root = document) => root.querySelector(sel);
 const view = $("#view");
 
@@ -289,14 +289,16 @@ const views = {
   },
 
   async items() {
-    const qs = new URLSearchParams({ q: state.itemQuery, status: state.itemFilter });
+    const qs = new URLSearchParams({ q: state.itemQuery, loan: state.itemLoan });
+    if (state.itemActive) qs.set("active", state.itemActive);
     const items = await api(`/items?${qs}`);
-    const chip = (v, label) => `<button class="chip ${state.itemFilter === v ? "on" : ""}" data-filter="${v}">${label}</button>`;
+    const chip = (axis, v, label) => `<button class="chip ${state[axis] === v ? "on" : ""}" data-filter="${axis}:${v}">${label}</button>`;
     return `
       <div class="head"><h1>備品</h1><button class="btn primary admin-only" id="add-item">＋ 備品を追加</button></div>
       <div class="toolbar">
         <input type="search" id="item-q" placeholder="${esc(searchHint("items"))}" value="${esc(state.itemQuery)}">
-        <div class="chips">${chip("", "すべて")}${chip("available", "在庫あり")}${chip("on_loan", "貸出中")}${chip("inactive", "無効")}</div>
+        <div class="chips" role="group" aria-label="有効・無効">${chip("itemActive", "true", "有効")}${chip("itemActive", "false", "無効")}${chip("itemActive", "", "すべて")}</div>
+        <div class="chips" role="group" aria-label="貸出状況">${chip("itemLoan", "available", "在庫あり")}${chip("itemLoan", "on_loan", "貸出中")}${chip("itemLoan", "", "すべて")}</div>
       </div>
       <section class="panel">
         ${items.length ? `<div class="table-wrap"><table>
@@ -341,16 +343,26 @@ const views = {
     const f = state.loanFilter;
     const qs = new URLSearchParams();
     if (f.active) qs.set("active", "true");
-    for (const k of ["from", "to", "user_id", "item_id"]) if (f[k]) qs.set(k, f[k]);
+    for (const k of ["from", "to", "user_q", "item_q"]) if (f[k]) qs.set(k, f[k]);
     const [data, users, items] = await Promise.all([api(`/loans?${qs}`), api("/users"), api("/items")]);
-    const opt = (list, sel) => list.map(x => `<option value="${x.id}" ${String(x.id) === String(sel) ? "selected" : ""}>${esc(x.name)}</option>`).join("");
+    // Suggestions for the search boxes: names plus the values of the fields in use, labelled by field.
+    const suggest = (kind, list) => {
+      const seen = new Set();
+      return [["name", "名前"], ...FIELD_KEYS[kind].filter(k => on(kind, k)).map(k => [k, label(kind, k)])]
+        .flatMap(([k, lbl]) => list.map(x => [x[k], lbl]))
+        .filter(([v]) => v && !seen.has(v) && seen.add(v))
+        .map(([v, lbl]) => `<option value="${esc(v)}" label="${esc(lbl)}"></option>`).join("");
+    };
     return `
       <div class="head"><h1>貸出履歴</h1><a class="btn" href="${API}/loans.csv?${qs}" download>CSVで保存</a></div>
       <form class="toolbar" id="loan-filter">
-        <input type="date" name="from" value="${esc(f.from)}" aria-label="開始日"> 〜
-        <input type="date" name="to" value="${esc(f.to)}" aria-label="終了日">
-        <select name="user_id"><option value="">すべてのユーザー</option>${opt(users, f.user_id)}</select>
-        <select name="item_id"><option value="">すべての備品</option>${opt(items, f.item_id)}</select>
+        ${periodPicker(f.from, f.to)}
+        <input type="search" name="user_q" id="loan-user-q" list="loan-users" value="${esc(f.user_q)}"
+               placeholder="ユーザー（${esc(searchHint("users").replace(/で検索$/, ""))}）">
+        <datalist id="loan-users">${suggest("users", users)}</datalist>
+        <input type="search" name="item_q" id="loan-item-q" list="loan-items" value="${esc(f.item_q)}"
+               placeholder="備品（${esc(searchHint("items").replace(/で検索$/, ""))}）">
+        <datalist id="loan-items">${suggest("items", items)}</datalist>
         <label class="check"><input type="checkbox" name="active" ${f.active ? "checked" : ""}> 貸出中のみ</label>
       </form>
       <section class="panel">
@@ -424,6 +436,121 @@ const views = {
   },
 };
 
+// ------------------------------------------------------------------ period picker (貸出履歴)
+// A calendar popover in the app's own style; the native date picker can't be themed.
+// Dates are "YYYY-MM-DD" in JST, the same as the API's from / to.
+const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" });
+const today = () => ymd.format(new Date());
+const parseDay = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+const dayStr = (dt) => dt.toISOString().slice(0, 10);
+const addDays = (s, n) => { const dt = parseDay(s); dt.setUTCDate(dt.getUTCDate() + n); return dayStr(dt); };
+const shortDay = (s) => { const [y, m, d] = s.split("-").map(Number); return `${y === +today().slice(0, 4) ? "" : y + "/"}${m}/${d}`; };
+const cal = { open: false, mode: "day", month: "", from: "", to: "" };  // to === "" while picking the second day
+
+function periodLabel(from, to) {
+  if (!from && !to) return "すべての期間";
+  if (from === to) return shortDay(from);
+  return `${from ? shortDay(from) : ""} 〜 ${to ? shortDay(to) : ""}`;
+}
+function periodPresets() {
+  const t = today(), dow = parseDay(t).getUTCDay(), [y, m] = t.split("-").map(Number);
+  const prev = new Date(Date.UTC(y, m - 2, 1));
+  return [["今日", t, t], ["今週", addDays(t, -dow), t], ["今月", t.slice(0, 8) + "01", t],
+          ["先月", dayStr(prev), addDays(t.slice(0, 8) + "01", -1)], ["過去30日", addDays(t, -29), t]];
+}
+function periodPicker(from, to) {
+  return `<div class="period" id="period">
+    <input type="hidden" name="from" value="${esc(from)}"><input type="hidden" name="to" value="${esc(to)}">
+    <button type="button" class="chip period-btn ${from || to ? "on" : ""}" id="period-btn" aria-haspopup="dialog" aria-expanded="false">
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      ${esc(periodLabel(from, to))}</button>
+    ${from || to ? `<button type="button" class="period-clear" data-period-clear aria-label="期間をクリア">×</button>` : ""}
+    <div class="period-pop" id="period-pop" role="dialog" aria-label="期間を選択" hidden></div>
+  </div>`;
+}
+function calendarHtml() {
+  const t = today(), [y, m] = cal.month.split("-").map(Number);
+  const first = new Date(Date.UTC(y, m - 1, 1)), days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const lo = cal.from, hi = cal.to || cal.from;
+  const cells = Array.from({ length: first.getUTCDay() }, () => `<span></span>`);
+  for (let d = 1; d <= days; d++) {
+    const s = `${cal.month}-${String(d).padStart(2, "0")}`, dow = (first.getUTCDay() + d - 1) % 7;
+    const cls = [s === t && "today", s > t && "future", lo && s >= lo && s <= hi && "in",
+                 s === lo && "start", s === hi && "end", dow === 0 && "sun", dow === 6 && "sat"].filter(Boolean).join(" ");
+    cells.push(`<button type="button" class="${cls}" data-day="${s}">${d}</button>`);
+  }
+  if (cal.mode === "month") return monthsHtml(y);
+  if (cal.mode === "year") return yearsHtml(y);
+  const preset = ([lbl, a, b]) => `<button type="button" class="chip ${a === cal.from && b === cal.to ? "on" : ""}" data-range="${a},${b}">${lbl}</button>`;
+  return `<div class="chips">${periodPresets().map(preset).join("")}</div>
+    <div class="cal-head">
+      <button type="button" class="btn small ghost" data-month="-1" aria-label="前の月">‹</button>
+      <button type="button" class="cal-title" data-mode="month" aria-label="年と月を選ぶ">${y}年${m}月 ▾</button>
+      <button type="button" class="btn small ghost" data-month="1" aria-label="次の月">›</button></div>
+    <div class="cal-grid">${["日", "月", "火", "水", "木", "金", "土"].map(w => `<span class="wd">${w}</span>`).join("")}${cells.join("")}</div>
+    <p class="hint">${cal.from && !cal.to ? "終了日を選んでください（同じ日をもう一度押すとその日だけ）" : "開始日を選んでください"}</p>`;
+}
+// Year view: 12 years per page, ‹ › moves by 12; picking a year goes to the month view.
+function yearsHtml(y) {
+  const ty = +today().slice(0, 4), start = y - 7;  // the shown year sits in the middle of the page
+  const years = Array.from({ length: 12 }, (_, i) => start + i).map(yy => {
+    const cls = [yy === y && "start end", yy === ty && "today", yy > ty && "future"];
+    return `<button type="button" class="${cls.filter(Boolean).join(" ")}" data-pick-year="${yy}">${yy}</button>`;
+  }).join("");
+  return `<div class="cal-head">
+      <button type="button" class="btn small ghost" data-month="-144" aria-label="前の12年">‹</button>
+      <span class="cal-title">${start}〜${start + 11}年</span>
+      <button type="button" class="btn small ghost" data-month="144" aria-label="次の12年">›</button></div>
+    <div class="cal-months">${years}</div>
+    <p class="hint">年を選んでください</p>`;
+}
+// Month view: ‹ › moves by a year, picking a month goes back to the day view.
+function monthsHtml(y) {
+  const [ty, tm] = today().split("-").map(Number), [, sm] = cal.month.split("-").map(Number);
+  const months = Array.from({ length: 12 }, (_, i) => i + 1).map(mm => {
+    const cls = [mm === sm && "start end", y === ty && mm === tm && "today", (y > ty || (y === ty && mm > tm)) && "future"];
+    return `<button type="button" class="${cls.filter(Boolean).join(" ")}" data-pick-month="${y}-${String(mm).padStart(2, "0")}">${mm}月</button>`;
+  }).join("");
+  return `<div class="cal-head">
+      <button type="button" class="btn small ghost" data-month="-12" aria-label="前の年">‹</button>
+      <button type="button" class="cal-title" data-mode="year" aria-label="年を選ぶ">${y}年 ▾</button>
+      <button type="button" class="btn small ghost" data-month="12" aria-label="次の年">›</button></div>
+    <div class="cal-months">${months}</div>
+    <p class="hint">月を選んでください</p>`;
+}
+function drawCalendar() { $("#period-pop").innerHTML = calendarHtml(); }
+function openCalendar() {
+  const f = state.loanFilter;
+  Object.assign(cal, { open: true, mode: "day", from: f.from, to: f.to, month: (f.to || f.from || today()).slice(0, 7) });
+  drawCalendar();
+  $("#period-pop").hidden = false;
+  $("#period-btn").setAttribute("aria-expanded", "true");
+}
+function closeCalendar() {
+  cal.open = false;
+  const pop = $("#period-pop");
+  if (pop) { pop.hidden = true; $("#period-btn").setAttribute("aria-expanded", "false"); }
+}
+function applyPeriod(from, to) {
+  closeCalendar();
+  Object.assign(state.loanFilter, { from, to });
+  render();
+}
+function shiftMonth(n) {
+  const [y, m] = cal.month.split("-").map(Number);
+  cal.month = dayStr(new Date(Date.UTC(y, m - 1 + n, 1))).slice(0, 7);
+  drawCalendar();
+}
+function pickDay(s) {
+  if (!cal.from || cal.to) { Object.assign(cal, { from: s, to: "" }); drawCalendar(); return; }
+  applyPeriod(s < cal.from ? s : cal.from, s < cal.from ? cal.from : s);
+}
+// composedPath: a day button is already replaced by the redraw when the click reaches the document.
+document.addEventListener("click", (e) => { if (cal.open && !e.composedPath().some(el => el.id === "period")) closeCalendar(); });
+document.addEventListener("keydown", (e) => {
+  if (cal.open && e.key === "Escape") { closeCalendar(); $("#period-btn")?.focus(); }
+});
+
 // ------------------------------------------------------------------ events inside views
 view.addEventListener("click", async (e) => {
   const t = e.target.closest("button, [data-filter]");
@@ -432,8 +559,16 @@ view.addEventListener("click", async (e) => {
   try {
     if (t.id === "add-item") itemForm();
     else if (t.id === "add-user") userForm();
-    else if (d.filter !== undefined) { state.itemFilter = d.filter; render(); }
+    else if (d.filter) { const [axis, v] = d.filter.split(":"); state[axis] = v; render(); }
     else if (d.userFilter !== undefined) { state.userFilter = d.userFilter; render(); }
+    else if (t.id === "period-btn") cal.open ? closeCalendar() : openCalendar();
+    else if (d.periodClear !== undefined) applyPeriod("", "");
+    else if (d.range) applyPeriod(...d.range.split(","));
+    else if (d.month) shiftMonth(+d.month);
+    else if (d.mode) { cal.mode = d.mode; drawCalendar(); }
+    else if (d.pickYear) { Object.assign(cal, { mode: "month", month: d.pickYear + cal.month.slice(4) }); drawCalendar(); }
+    else if (d.pickMonth) { Object.assign(cal, { mode: "day", month: d.pickMonth }); drawCalendar(); }
+    else if (d.day) pickDay(d.day);
     else if (d.editItem) itemForm((await api("/items")).find(i => i.id === +d.editItem));
     else if (d.editUser) userForm((await api("/users")).find(u => u.id === +d.editUser));
     else if (d.close) closeLoan(d.close, d.label);
@@ -454,22 +589,27 @@ view.addEventListener("click", async (e) => {
 
 let searchTimer;
 view.addEventListener("input", (e) => {
-  if (e.target.id === "item-q" || e.target.id === "user-q") {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      if (e.target.id === "item-q") state.itemQuery = e.target.value; else state.userQuery = e.target.value;
-      render({ keepFocus: e.target.id });
-    }, 250);
-  }
+  const id = e.target.id;
+  if (!["item-q", "user-q", "loan-user-q", "loan-item-q"].includes(id)) return;
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    if (id === "item-q") state.itemQuery = e.target.value;
+    else if (id === "user-q") state.userQuery = e.target.value;
+    else readLoanFilter(e.target.form);
+    render({ keepFocus: id });
+  }, 250);
 });
 view.addEventListener("change", (e) => {
   const form = e.target.closest("#loan-filter");
-  if (!form) return;
-  const f = new FormData(form);
-  state.loanFilter = { active: f.get("active") === "on", from: f.get("from"), to: f.get("to"),
-                       user_id: f.get("user_id"), item_id: f.get("item_id") };
+  if (!form || e.target.type === "search") return;  // search boxes are handled on input
+  readLoanFilter(form);
   render();
 });
+function readLoanFilter(form) {
+  const f = new FormData(form);
+  state.loanFilter = { active: f.get("active") === "on", from: f.get("from"), to: f.get("to"),
+                       user_q: f.get("user_q").trim(), item_q: f.get("item_q").trim() };
+}
 
 function deviceForm(existingId) {
   openDialog({
@@ -571,7 +711,7 @@ function connectLive() {
     if (e.type === "ping" || e.type === "captured") return;
     if (e.type === "fields_changed") { loadFields().then(() => { if (!dlg.open) render(); }).catch(() => {}); return; }
     if (MESSAGES[e.type]) toast(MESSAGES[e.type](e));
-    if (!dlg.open) render();
+    if (!dlg.open && !cal.open) render();
   };
 }
 

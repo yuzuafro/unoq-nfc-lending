@@ -381,7 +381,7 @@ erDiagram
       <tr><td><span class="pill p-mu">端末トークン</span></td><td><code>POST /scans</code></td><td>UID の種類を問い合わせる → <code>user</code> / <code>item</code> / <code>unknown</code> / <code>captured</code></td></tr>
       <tr><td><span class="pill p-mu">端末トークン</span></td><td><code>POST /touches</code></td><td>貸出の判定と記録 → <code>checkout</code> / <code>return</code> / <code>transfer</code> / <code>error</code></td></tr>
       <tr><td><span class="pill p-mu">端末トークン</span></td><td><code>POST /devices/{id}/heartbeat</code></td><td>死活監視（60秒ごと）</td></tr>
-      <tr><td><span class="pill p-ok">誰でも</span></td><td><code>GET /items</code> <code>GET /users</code> <code>GET /loans</code> <code>GET /loans.csv</code></td><td>一覧と検索（状態、期間、ユーザー、備品で絞込み）、CSV 出力</td></tr>
+      <tr><td><span class="pill p-ok">誰でも</span></td><td><code>GET /items</code> <code>GET /users</code> <code>GET /loans</code> <code>GET /loans.csv</code></td><td>一覧と検索（状態、期間、ユーザー・備品の名前や属性で絞込み）、CSV 出力</td></tr>
       <tr><td><span class="pill p-ok">誰でも</span></td><td><code>GET /fields</code></td><td>項目名の設定（ユーザー・備品の各項目の名前と、有効かどうか）</td></tr>
       <tr><td><span class="pill p-ok">誰でも</span></td><td><code>GET /summary</code></td><td>ダッシュボード用の件数と最近の操作</td></tr>
       <tr><td><span class="pill p-ok">誰でも</span></td><td><code>WS /ws/events</code></td><td>タッチ・貸出・返却をリアルタイムで通知</td></tr>

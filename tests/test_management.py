@@ -97,6 +97,10 @@ def test_inactive_user_or_item_is_error(env):
     client.patch(f"/api/v1/users/{u1['id']}", json={"active": True})
     client.patch(f"/api/v1/items/{it['id']}", json={"active": False})
     assert touch(client, dev, USER_UID)["action"] == "error"
+    assert client.get("/api/v1/items?active=true").json() == []
+    assert len(client.get("/api/v1/items?active=false&loan=available").json()) == 1
+    assert [i["status"] for i in client.get("/api/v1/items?status=inactive").json()] == ["inactive"]
+    assert len(client.get("/api/v1/items").json()) == 1
 
 
 def test_tag_uid_unique_across_users_and_items(env):
@@ -125,9 +129,17 @@ def test_asset_no_and_team(env):
     e = client.get("/api/v1/summary").json()["recent"][0]
     assert (e["user_team"], e["item_asset_no"]) == ("開発1", "PC-0001")
     assert client.get("/api/v1/items?status=on_loan").json()[0]["loan"]["user_team"] == "開発1"
+    assert [i["name"] for i in client.get("/api/v1/items?active=true&loan=on_loan").json()] == ["ノートPC 1"]
+    assert [i["name"] for i in client.get("/api/v1/items?loan=available").json()] == ["no number"]
     l = client.get("/api/v1/loans").json()["loans"][0]
     assert (l["user_team"], l["item_asset_no"]) == ("開発1", "PC-0001")
     assert "PC-0001" in client.get("/api/v1/loans.csv").text
+    # History can be narrowed by any user / item attribute, partial match.
+    assert client.get("/api/v1/loans?user_q=開発").json()["total"] == 1
+    assert client.get("/api/v1/loans?user_q=営業").json()["total"] == 0
+    assert client.get("/api/v1/loans?item_q=PC-00&user_q=山").json()["total"] == 1
+    assert client.get("/api/v1/loans?item_q=プリンタ").json()["total"] == 0
+    assert "PC-0001" not in client.get("/api/v1/loans.csv?item_q=プリンタ").text
 
 
 def test_custom_field_labels(env):
